@@ -7,10 +7,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@gamification/shared": "workspace:*"
+    "@gamification/shared": "workspace:*",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
     "typescript": "~6.0.3"
   }
 }
