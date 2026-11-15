@@ -4,7 +4,10 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "noEmit": true,
-    "types": ["node"]
+    "isolatedModules": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "types": ["node", "jest"]
   },
-  "include": ["src", "drizzle.config.ts"]
+  "include": ["src", "test", "drizzle.config.ts"]
 }
