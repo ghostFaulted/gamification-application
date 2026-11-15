@@ -14,7 +14,7 @@ Webowa aplikacja wspomagająca grywalizację zajęć dydaktycznych na Wydziale M
 ```
 apps/
   frontend/     # SPA: React + TypeScript + Vite
-  backend/      # API: TypeScript (szkielet API w SCRUM-46)
+  backend/      # API: NestJS + Drizzle
 packages/
   shared/       # wspólne typy TS (role, DTO, zdarzenia quizów) dla frontendu i backendu
 ```
@@ -22,16 +22,38 @@ packages/
 ## Wymagania
 
 - Node.js 24+ (zalecana wersja w `.nvmrc`)
-- pnpm 12: `npm i -g pnpm`
+- pnpm 12: `npm i -g pnpm` (wersja z pola `packageManager` w `package.json`)
+- Docker Desktop (do uruchomienia przez Compose)
 
-## Uruchomienie lokalne
+## Uruchomienie lokalne (pnpm)
 
 ```bash
 pnpm install          # instaluje zależności i buduje packages/shared
-pnpm dev              # frontend: http://localhost:5173
+pnpm dev              # frontend: http://localhost:5173 , API: http://localhost:3000
 ```
 
 Frontend przekierowuje zapytania `/api/*` do backendu na `http://localhost:3000` (proxy Vite).
+
+Lokalna baza (Compose tylko z Postgresem albo pełny stack poniżej): connection string jak w `.env.example`.
+
+## Uruchomienie przez Docker Compose
+
+Pełny stack: PostgreSQL + API + frontend.
+
+```bash
+cp .env.example .env   # raz; pliku .env nie commitujemy
+docker compose up --build
+```
+
+| Usługa     | URL                                           |
+| ---------- | --------------------------------------------- |
+| Frontend   | http://localhost:5173                         |
+| API health | http://localhost:3000/api/health              |
+| Postgres   | `localhost:${POSTGRES_PORT}` (domyślnie 5432) |
+
+Kontener API przy starcie uruchamia migracje Drizzle (`db:migrate`), potem NestJS.
+
+Zatrzymanie: `Ctrl+C` albo `docker compose down`. Dane Postgresa zostają w volume (`docker compose down -v` usuwa volume).
 
 ## Skrypty
 
@@ -44,13 +66,26 @@ Frontend przekierowuje zapytania `/api/*` do backendu na `http://localhost:3000`
 | `pnpm format`       | formatowanie kodu (Prettier)                 |
 | `pnpm format:check` | sprawdzenie formatowania bez zmian           |
 
+Backend (przykłady):
+
+```bash
+pnpm --filter @gamification/backend db:generate
+pnpm --filter @gamification/backend db:migrate
+```
+
 ## Praca z pnpm
 
 ```bash
-pnpm --filter frontend add axios      # dodanie zależności do jednej aplikacji
-pnpm --filter frontend dev            # uruchomienie jednej aplikacji
+pnpm --filter @gamification/frontend add axios
+pnpm --filter @gamification/frontend dev
 ```
 
-Po zmianach w `packages/shared` poza `pnpm dev` uruchom `pnpm --filter shared build`.
+Po zmianach w `packages/shared` poza `pnpm dev` uruchom `pnpm --filter @gamification/shared build`.
 
-Commity zaczynamy od klucza z Jiry, np. `SCRUM-62: init monorepo structure`.
+## Konwencje zespołu (skrót)
+
+- Gałąź → PR → **squash merge** do `main` (bez merge commitów).
+- CI (lint, typecheck, build) musi być zielone; wymagane jest też review.
+- Tytuły commitów/PR po angielsku z kluczem Jiry, np. `SCRUM-43: add Docker Compose stack`.
+- Opisy PR i komentarze review po polsku; kod i identyfikatory po angielsku.
+- Nie edytujemy migracji już obecnych na `main`; każda zmiana schematu = nowa migracja Drizzle (`generate`, nie `push`).
