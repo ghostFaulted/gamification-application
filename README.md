@@ -34,7 +34,7 @@ pnpm dev              # frontend: http://localhost:5173 , API: http://localhost:
 
 Frontend przekierowuje zapytania `/api/*` do backendu na `http://localhost:3000` (proxy Vite).
 
-Lokalna baza (Compose tylko z Postgresem albo pełny stack poniżej): connection string jak w `.env.example`.
+Lokalna baza: `docker compose up database` (albo pełny stack poniżej). Backend uruchomiony na hoście nie czyta `.env`; bez `DATABASE_URL` łączy się domyślnie z `postgresql://postgres:postgres@localhost:5432/gamification`. Przy innym `POSTGRES_PORT` wyeksportuj `DATABASE_URL` z `localhost` i tym portem (host `database` działa tylko wewnątrz Compose).
 
 ## Uruchomienie przez Docker Compose
 

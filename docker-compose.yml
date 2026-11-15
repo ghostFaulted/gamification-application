@@ -4,13 +4,18 @@ services:
   database:
     image: postgres:16-alpine
     ports:
-      - '${POSTGRES_PORT}:5432'
+      - '127.0.0.1:${POSTGRES_PORT}:5432'
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h localhost -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 2s
+      timeout: 5s
+      retries: 15
 
   api:
     build:
@@ -20,8 +25,10 @@ services:
       - '${API_PORT}:3000'
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      PORT: ${API_PORT}
-    depends_on: [database]
+      PORT: 3000
+    depends_on:
+      database:
+        condition: service_healthy
 
   web:
     build:
