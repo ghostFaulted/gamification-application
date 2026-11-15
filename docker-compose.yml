@@ -17,6 +17,30 @@ services:
       timeout: 5s
       retries: 15
 
+  ldap:
+    build:
+      context: ./docker/ldap
+    ports:
+      - '127.0.0.1:${LDAP_PORT}:389'
+    environment:
+      LDAP_ORGANISATION: Grywalizacja Local Labs
+      LDAP_DOMAIN: labs.wmi.amu.edu.pl
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD}
+      LDAP_CONFIG_PASSWORD: ${LDAP_CONFIG_PASSWORD}
+      LDAP_TLS: 'false'
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'ldapsearch -x -H ldap://127.0.0.1:389 -b dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl -D cn=admin,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl -w "$$LDAP_ADMIN_PASSWORD" >/dev/null',
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
   api:
     build:
       context: .
@@ -42,3 +66,5 @@ services:
 
 volumes:
   postgres_data:
+  ldap_data:
+  ldap_config:

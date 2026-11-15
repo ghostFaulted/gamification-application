@@ -74,7 +74,7 @@ pnpm format         # Prettier write
 pnpm format:check   # Prettier check
 ```
 
-Docker Compose (database + api + web):
+Docker Compose (database + ldap + api + web):
 
 ```bash
 cp .env.example .env   # once; never commit .env
@@ -83,7 +83,9 @@ docker compose up --build
 
 - Frontend: http://localhost:5173
 - API health: http://localhost:3000/api/health
+- OpenLDAP (local test directory): `localhost:${LDAP_PORT}` (default 389); seed in `docker/ldap/bootstrap/`
 - API container runs Drizzle migrations on start, then NestJS.
+- Faculty LABS is LDAPS on deploy; local Compose uses plain LDAP for the test container.
 
 Before finishing a change, `pnpm install`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check` and `pnpm build` must pass from a clean clone.
 
