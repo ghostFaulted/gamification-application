@@ -3,10 +3,11 @@
   "compilerOptions": {
     "module": "nodenext",
     "moduleResolution": "nodenext",
+    "noEmit": true,
     "isolatedModules": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "types": ["node", "jest"]
   },
-  "include": ["src", "test"]
+  "include": ["src", "test", "drizzle.config.ts"]
 }
