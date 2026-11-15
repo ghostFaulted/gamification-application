@@ -50,6 +50,10 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL}
       PORT: 3000
+      LDAP_URL: ${LDAP_URL}
+      LDAP_BASE_DN: ${LDAP_BASE_DN}
+      LDAP_ADMIN_DN: ${LDAP_ADMIN_DN}
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD}
     depends_on:
       database:
         condition: service_healthy
