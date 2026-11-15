@@ -83,10 +83,12 @@ docker compose exec ldap ldapsearch -x -H ldap://127.0.0.1:389 \
   -s base '(objectClass=*)' dn uid mail
 
 # rola: szukaj grup, których member to DN użytkownika (tak powinien robić backend)
-docker compose exec ldap ldapsearch -x -H ldap://127.0.0.1:389 \
-  -D 'cn=admin,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl' -w admin \
-  -b 'ou=Groups,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl' \
-  '(member=cn=student1,ou=Students,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl)' cn
+# hasło admina z env kontenera (LDAP_ADMIN_PASSWORD z .env), nie wpisuj na sztywno
+docker compose exec ldap sh -c \
+  'ldapsearch -x -H ldap://127.0.0.1:389 \
+  -D cn=admin,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl -w "$LDAP_ADMIN_PASSWORD" \
+  -b ou=Groups,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl \
+  "(member=cn=student1,ou=Students,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl)" cn'
 ```
 
 Seed jest wbudowany w obraz (`docker/ldap/Dockerfile` + `bootstrap/50-seed.ldif`). Po zmianie seeda: `docker compose build ldap && docker compose up -d ldap` (przy zmianie danych często też `docker compose down -v`, bo volume trzyma stary katalog).
