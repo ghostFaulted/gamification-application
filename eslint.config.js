@@ -15,6 +15,10 @@ export default defineConfig(
     languageOptions: { globals: globals.node },
   },
   {
+    files: ['apps/backend/test/**/*.ts', 'apps/backend/**/*.spec.ts'],
+    languageOptions: { globals: globals.jest },
+  },
+  {
     files: ['apps/frontend/**/*.{ts,tsx}'],
     languageOptions: { globals: globals.browser },
     extends: [reactHooks.configs.flat['recommended-latest'], reactRefresh.configs.vite],

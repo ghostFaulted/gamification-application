@@ -3,10 +3,10 @@
   "compilerOptions": {
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "rootDir": "src",
-    "outDir": "dist",
-    "sourceMap": true,
-    "types": ["node"]
+    "isolatedModules": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "types": ["node", "jest"]
   },
-  "include": ["src"]
+  "include": ["src", "test"]
 }
