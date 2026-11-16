@@ -17,10 +17,14 @@ export class JwtAuthGuard implements CanActivate {
     const res = http.getResponse<Response>();
 
     const cookies = req.cookies as Record<string, unknown> | undefined;
-    const rawToken = cookies?.[AUTH_COOKIE_NAME];
-    const token = typeof rawToken === 'string' ? rawToken : undefined;
+    const hasAuthCookie = cookies !== undefined && Object.hasOwn(cookies, AUTH_COOKIE_NAME);
+    const rawToken = hasAuthCookie ? cookies[AUTH_COOKIE_NAME] : undefined;
+    const token = typeof rawToken === 'string' && rawToken.length > 0 ? rawToken : undefined;
 
     if (!token) {
+      if (hasAuthCookie) {
+        res.clearCookie(AUTH_COOKIE_NAME, getClearAuthCookieOptions());
+      }
       throw new UnauthorizedException('Authentication token is missing');
     }
 
@@ -28,7 +32,9 @@ export class JwtAuthGuard implements CanActivate {
       req.user = await this.tokenService.verifyAccessToken(token);
       return true;
     } catch (error) {
-      res.clearCookie(AUTH_COOKIE_NAME, getClearAuthCookieOptions());
+      if (error instanceof UnauthorizedException) {
+        res.clearCookie(AUTH_COOKIE_NAME, getClearAuthCookieOptions());
+      }
       throw error;
     }
   }

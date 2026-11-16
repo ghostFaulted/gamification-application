@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, type OnModuleInit } from '@nestjs/common';
+import { getJwtExpiresInSeconds, getJwtSecret } from './auth.constants';
 import { AuthController } from './auth.controller';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import {
@@ -19,4 +20,9 @@ import { TokenService } from './token.service';
   ],
   exports: [TokenService, JwtAuthGuard],
 })
-export class AuthModule {}
+export class AuthModule implements OnModuleInit {
+  onModuleInit(): void {
+    getJwtSecret();
+    getJwtExpiresInSeconds();
+  }
+}

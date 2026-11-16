@@ -83,18 +83,22 @@ export class TokenService {
   }
 
   async revokeToken(token: string): Promise<void> {
+    let decoded: string | jwt.JwtPayload;
+
     try {
-      const decoded = jwt.verify(token, getJwtSecret());
-      if (
-        typeof decoded === 'object' &&
-        decoded !== null &&
-        typeof decoded.jti === 'string' &&
-        typeof decoded.exp === 'number'
-      ) {
-        await this.revokedTokens.revoke(decoded.jti, new Date(decoded.exp * 1000));
-      }
+      decoded = jwt.verify(token, getJwtSecret());
     } catch {
-      // Logout must stay idempotent even when token is already expired or malformed.
+      // Logout must stay idempotent when the token is already expired or malformed.
+      return;
+    }
+
+    if (
+      typeof decoded === 'object' &&
+      decoded !== null &&
+      typeof decoded.jti === 'string' &&
+      typeof decoded.exp === 'number'
+    ) {
+      await this.revokedTokens.revoke(decoded.jti, new Date(decoded.exp * 1000));
     }
   }
 }
