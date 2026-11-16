@@ -50,6 +50,8 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL}
       PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN_SECONDS: ${JWT_EXPIRES_IN_SECONDS}
       LDAP_URL: ${LDAP_URL}
       LDAP_BASE_DN: ${LDAP_BASE_DN}
       LDAP_ADMIN_DN: ${LDAP_ADMIN_DN}
