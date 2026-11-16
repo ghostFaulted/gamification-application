@@ -77,7 +77,11 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
               autoComplete="username"
               placeholder="np. s123456"
               value={loginValue}
-              onChange={(e) => setLoginValue(e.target.value)}
+              onChange={(e) => {
+                setLoginValue(e.target.value);
+                setFieldErrors((prev) => ({ ...prev, login: undefined }));
+                setFormError(null);
+              }}
               aria-invalid={Boolean(fieldErrors.login)}
               aria-describedby={fieldErrors.login ? 'login-error' : 'login-hint'}
               disabled={isSubmitting}
@@ -103,7 +107,11 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setFieldErrors((prev) => ({ ...prev, password: undefined }));
+                  setFormError(null);
+                }}
                 aria-invalid={Boolean(fieldErrors.password)}
                 aria-describedby={fieldErrors.password ? 'password-error' : undefined}
                 disabled={isSubmitting}
