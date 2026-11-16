@@ -57,6 +57,8 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      ldap:
+        condition: service_healthy
 
   web:
     build:
