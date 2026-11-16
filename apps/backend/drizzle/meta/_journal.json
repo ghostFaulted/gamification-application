@@ -8,6 +8,13 @@
       "when": 1794674414525,
       "tag": "0000_lame_loki",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794841454294,
+      "tag": "0001_damp_james_howlett",
+      "breakpoints": true
     }
   ]
 }
