@@ -74,7 +74,7 @@ pnpm format         # Prettier write
 pnpm format:check   # Prettier check
 ```
 
-Docker Compose (database + api + web):
+Docker Compose (database + ldap + api + web):
 
 ```bash
 cp .env.example .env   # once; never commit .env
@@ -83,7 +83,9 @@ docker compose up --build
 
 - Frontend: http://localhost:5173
 - API health: http://localhost:3000/api/health
+- OpenLDAP (local test directory): `localhost:${LDAP_PORT}` (default 389); seed in `docker/ldap/bootstrap/`
 - API container runs Drizzle migrations on start, then NestJS.
+- Faculty LABS is LDAPS on deploy; local Compose uses plain LDAP for the test container.
 
 Before finishing a change, `pnpm install`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check` and `pnpm build` must pass from a clean clone.
 
@@ -101,7 +103,7 @@ Before finishing a change, `pnpm install`, `pnpm lint`, `pnpm typecheck`, `pnpm 
 - Every change goes through a pull request into `main`. **No direct pushes to `main`.**
 - **Squash merge only.** Do not use "Create a merge commit" or rebase-merge. One commit on `main` per PR; title becomes the commit message.
 - Branch protection on `main`: require a PR, require at least one approval, require the GitHub Actions check named `build` (lint + typecheck + build).
-- Author opens the PR; another teammate reviews; author squash-merges after CI is green and the review is approved.
+- Author opens the PR; another teammate reviews; once CI is green and the review is approved, the author or the reviewer squash-merges.
 - Branch names, commit messages and PR titles are in **English** and start with the Jira key, e.g. `SCRUM-43: add Docker Compose stack for local development`.
 - PR descriptions and review comments are in **Polish**. README and user-facing docs are in Polish. Code, identifiers and comments are in English.
 - Keep PRs on-ticket. Do not implement teammates' tasks in the same PR.
