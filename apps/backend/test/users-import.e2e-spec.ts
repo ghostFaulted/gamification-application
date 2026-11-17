@@ -103,6 +103,17 @@ describe('POST /api/users/import', () => {
       .expect(413);
   });
 
+  it('returns 400 for a non-file multipart field', async () => {
+    usersRepository.insertedLogins = [];
+    const res = await importAs('admin')
+      .field('note', 'extra')
+      .attach('file', Buffer.from('login\ns1\n'), 'users.csv')
+      .expect(400);
+
+    expect(res.body.message).toBe('Too many fields');
+    expect(usersRepository.insertedLogins).toEqual([]);
+  });
+
   it('imports valid logins and reports invalid rows', async () => {
     const res = await importAs('lecturer')
       .attach('file', Buffer.from('login;name\ns1;Jan\nS1;Jan\nbad login;Anna\n'), 'users.csv')

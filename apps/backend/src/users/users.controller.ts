@@ -25,8 +25,11 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   // Guards run before the interceptor, so the file is not read for unauthorized users.
   @UseGuards(JwtAuthGuard, RolesGuard('lecturer', 'admin'))
-  // A bigger upload is cut off by multer with 413 instead of being buffered in memory.
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_CSV_SIZE_BYTES, files: 1 } }))
+  // A bigger upload is cut off by multer with 413 instead of being buffered in memory;
+  // text fields are not used, so any of them is rejected with 400.
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: MAX_CSV_SIZE_BYTES, files: 1, fields: 0 } }),
+  )
   async importUsers(@UploadedFile() file: UploadedCsvFile | undefined): Promise<UsersImportReport> {
     // Throws 400 for a missing, non-CSV, empty or malformed file.
     const parsed = this.csvParser.parseUsersCsv(file);

@@ -68,6 +68,17 @@ describe('CsvParserService', () => {
     ]);
   });
 
+  it('reports source line numbers when blank lines are skipped', () => {
+    const csv = ['login', '', 's100001', '', '', 'bad login', '  ', 's100002', ''].join('\n');
+
+    const result = service.parseUsersCsv(makeCsvFile(csv));
+
+    expect(result.validLogins).toEqual(['s100001', 's100002']);
+    expect(result.errors).toEqual([
+      { row: 6, value: 'bad login', reason: 'Login contains invalid characters' },
+    ]);
+  });
+
   it('rejects missing file', () => {
     expect(() => service.parseUsersCsv(undefined)).toThrow(BadRequestException);
   });
