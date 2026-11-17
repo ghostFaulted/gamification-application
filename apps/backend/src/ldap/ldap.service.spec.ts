@@ -155,8 +155,44 @@ describe('LdapService', () => {
     await expect(service.authenticate('nobody', 'correct-password')).rejects.toBeInstanceOf(
       LdapInvalidCredentialsError,
     );
-    expect(client.bind).toHaveBeenCalledTimes(1);
   });
+
+  it('performs a decoy bind for an unknown user to equalize response time', async () => {
+    client.search.mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
+
+    await expect(service.authenticate('nobody', 'some-password')).rejects.toBeInstanceOf(
+      LdapInvalidCredentialsError,
+    );
+
+    expect(client.bind).toHaveBeenCalledTimes(2);
+    const [decoyDn, decoyPassword] = client.bind.mock.calls[1];
+    expect(decoyDn).toMatch(/^uid=decoy-[0-9a-f-]{36},dc=example,dc=test$/);
+    expect(decoyPassword).toBe('some-password');
+  });
+
+  it('still reports invalid credentials when the decoy bind fails for another reason', async () => {
+    client.search.mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
+    client.bind.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('socket hang up'));
+
+    await expect(service.authenticate('nobody', 'some-password')).rejects.toBeInstanceOf(
+      LdapInvalidCredentialsError,
+    );
+  });
+
+  it.each(['', '   '])(
+    'rejects an entry with an empty DN (%j) without binding to it',
+    async (dn) => {
+      client.search.mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] });
+
+      await expect(service.authenticate('student1', 'correct-password')).rejects.toBeInstanceOf(
+        LdapInvalidCredentialsError,
+      );
+
+      const boundDns = client.bind.mock.calls.map(([boundDn]) => boundDn);
+      expect(boundDns).not.toContain(dn);
+      expect(boundDns[1]).toMatch(/^uid=decoy-/);
+    },
+  );
 
   it('rejects an ambiguous login matching several entries', async () => {
     client.search.mockResolvedValueOnce({
@@ -167,7 +203,7 @@ describe('LdapService', () => {
     await expect(service.authenticate('student1', 'correct-password')).rejects.toBeInstanceOf(
       LdapInvalidCredentialsError,
     );
-    expect(client.bind).toHaveBeenCalledTimes(1);
+    expect(client.bind.mock.calls.map(([boundDn]) => boundDn)).not.toContain(USER_DN);
   });
 
   it('rejects an ambiguous login reported by the server size limit', async () => {

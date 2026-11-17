@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import {
   Client,
@@ -74,6 +75,10 @@ export class LdapService {
 
     try {
       const entry = await this.findUserEntry(client, config, login);
+      if (entry === null) {
+        await this.bindWithDecoyDn(client, config, password);
+        throw new LdapInvalidCredentialsError();
+      }
       await this.verifyPassword(client, entry.dn, password);
 
       return {
@@ -98,7 +103,11 @@ export class LdapService {
     return this.config;
   }
 
-  private async findUserEntry(client: Client, config: LdapConfig, login: string): Promise<Entry> {
+  private async findUserEntry(
+    client: Client,
+    config: LdapConfig,
+    login: string,
+  ): Promise<Entry | null> {
     let entries: Entry[];
 
     try {
@@ -127,10 +136,28 @@ export class LdapService {
       this.logger.warn(`LDAP search for login "${login}" matched more than one entry`);
     }
     if (entries.length !== 1) {
-      throw new LdapInvalidCredentialsError();
+      return null;
     }
 
-    return entries[0];
+    const [entry] = entries;
+    // A bind with an empty DN is an anonymous bind, which many servers report as success.
+    if (typeof entry.dn !== 'string' || entry.dn.trim().length === 0) {
+      this.logger.warn(`LDAP search for login "${login}" returned an entry with an empty DN`);
+      return null;
+    }
+
+    return entry;
+  }
+
+  // Unknown logins still cost one bind round trip, so response time does not reveal whether
+  // an account exists. The decoy DN never matches a real entry and the result is ignored.
+  private async bindWithDecoyDn(
+    client: Client,
+    config: LdapConfig,
+    password: string,
+  ): Promise<void> {
+    const decoyDn = `${config.loginAttribute}=decoy-${randomUUID()},${config.baseDn}`;
+    await client.bind(decoyDn, password).catch(() => undefined);
   }
 
   private async verifyPassword(client: Client, dn: string, password: string): Promise<void> {

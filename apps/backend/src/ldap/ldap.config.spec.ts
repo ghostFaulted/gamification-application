@@ -51,6 +51,23 @@ describe('loadLdapConfig', () => {
     expect(config.tlsOptions).toBeUndefined();
   });
 
+  it('rejects ldap:// in production even with LDAP_ALLOW_INSECURE=true', () => {
+    expect(() =>
+      loadLdapConfig({
+        ...baseEnv,
+        NODE_ENV: 'production',
+        LDAP_URL: 'ldap://ldap:389',
+        LDAP_ALLOW_INSECURE: 'true',
+      }),
+    ).toThrow(/production/);
+  });
+
+  it('accepts ldaps:// in production', () => {
+    expect(loadLdapConfig({ ...baseEnv, NODE_ENV: 'production' }).url).toBe(
+      'ldaps://ldap.example.test:636',
+    );
+  });
+
   it('keeps leading and trailing spaces in LDAP_ADMIN_PASSWORD', () => {
     const config = loadLdapConfig({ ...baseEnv, LDAP_ADMIN_PASSWORD: '  secret with spaces ' });
 
