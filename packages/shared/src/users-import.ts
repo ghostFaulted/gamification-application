@@ -12,6 +12,13 @@ export interface UsersImportReport {
   created: number;
   /** Valid logins not added: already in the database or repeated in the file. */
   skippedDuplicates: number;
+  /** Logins (lowercased) of the created students, in file order; length = `created`. */
+  createdLogins: string[];
+  /**
+   * Logins (lowercased) of the skipped entries, in file order; length = `skippedDuplicates`.
+   * A login repeated in the file is listed once per extra occurrence.
+   */
+  skippedLogins: string[];
   /** Rows rejected by validation, listed in `errors`. */
   invalid: number;
   errors: UsersImportRowError[];

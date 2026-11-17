@@ -26,10 +26,27 @@ class FakeUsersRepository extends UsersRepository {
     return null;
   }
 
+  /** Logins already "in the database". */
+  existingLogins = new Set<string>();
+
   async bulkInsertStudents(rawLogins: readonly string[]): Promise<BulkInsertStudentsResult> {
     this.insertedLogins = [...rawLogins];
-    const createdCount = new Set(rawLogins).size;
-    return { createdCount, skippedDuplicatesCount: rawLogins.length - createdCount };
+    const createdLogins: string[] = [];
+    const skippedLogins: string[] = [];
+    for (const login of rawLogins) {
+      if (this.existingLogins.has(login)) {
+        skippedLogins.push(login);
+      } else {
+        this.existingLogins.add(login);
+        createdLogins.push(login);
+      }
+    }
+    return {
+      createdCount: createdLogins.length,
+      skippedDuplicatesCount: skippedLogins.length,
+      createdLogins,
+      skippedLogins,
+    };
   }
 }
 
@@ -131,8 +148,27 @@ describe('POST /api/users/import', () => {
     expect(res.body).toEqual({
       created: 1,
       skippedDuplicates: 1,
+      createdLogins: ['s1'],
+      skippedLogins: ['s1'],
       invalid: 1,
       errors: [{ row: 4, value: 'bad login', reason: 'Login contains invalid characters' }],
+    });
+  });
+
+  it('lists logins skipped because they are already in the database or repeated in the file', async () => {
+    usersRepository.existingLogins = new Set(['s2']);
+
+    const res = await importAs('admin')
+      .attach('file', Buffer.from('login\ns1\ns2\nS1\ns3\n'), 'users.csv')
+      .expect(200);
+
+    expect(res.body).toEqual({
+      created: 2,
+      skippedDuplicates: 2,
+      createdLogins: ['s1', 's3'],
+      skippedLogins: ['s2', 's1'],
+      invalid: 0,
+      errors: [],
     });
   });
 });

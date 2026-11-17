@@ -33,13 +33,14 @@ export class UsersController {
   async importUsers(@UploadedFile() file: UploadedCsvFile | undefined): Promise<UsersImportReport> {
     // Throws 400 for a missing, non-CSV, empty or malformed file.
     const parsed = this.csvParser.parseUsersCsv(file);
-    const { createdCount, skippedDuplicatesCount } = await this.usersRepository.bulkInsertStudents(
-      parsed.validLogins,
-    );
+    const { createdCount, skippedDuplicatesCount, createdLogins, skippedLogins } =
+      await this.usersRepository.bulkInsertStudents(parsed.validLogins);
 
     return {
       created: createdCount,
       skippedDuplicates: skippedDuplicatesCount,
+      createdLogins,
+      skippedLogins,
       invalid: parsed.invalidRowsCount,
       errors: parsed.errors,
     };
