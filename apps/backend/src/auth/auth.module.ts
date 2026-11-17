@@ -1,6 +1,9 @@
 import { Module, type OnModuleInit } from '@nestjs/common';
+import { LdapModule } from '../ldap/ldap.module';
+import { UsersModule } from '../users/users.module';
 import { getJwtExpiresInSeconds, getJwtSecret } from './auth.constants';
 import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import {
   DrizzleRevokedTokensRepository,
@@ -9,8 +12,10 @@ import {
 import { TokenService } from './token.service';
 
 @Module({
+  imports: [LdapModule, UsersModule],
   controllers: [AuthController],
   providers: [
+    AuthService,
     TokenService,
     JwtAuthGuard,
     {

@@ -34,7 +34,7 @@ function readRequiredSecret(env: NodeJS.ProcessEnv, name: string): string {
   return value;
 }
 
-function parseUrl(raw: string, allowInsecure: boolean): string {
+function parseUrl(raw: string, allowInsecure: boolean, isProduction: boolean): string {
   let url: URL;
   try {
     url = new URL(raw);
@@ -44,6 +44,11 @@ function parseUrl(raw: string, allowInsecure: boolean): string {
 
   if (url.protocol === 'ldaps:') {
     return raw;
+  }
+  if (url.protocol === 'ldap:' && isProduction) {
+    throw new LdapConfigError(
+      'LDAP_URL must use ldaps:// in production; LDAP_ALLOW_INSECURE is ignored when NODE_ENV=production',
+    );
   }
   if (url.protocol === 'ldap:' && allowInsecure) {
     return raw;
@@ -99,7 +104,8 @@ function buildTlsOptions(caFile: string | undefined): ConnectionOptions {
 
 export function loadLdapConfig(env: NodeJS.ProcessEnv = process.env): LdapConfig {
   const allowInsecure = env.LDAP_ALLOW_INSECURE?.trim().toLowerCase() === 'true';
-  const url = parseUrl(readRequired(env, 'LDAP_URL'), allowInsecure);
+  const isProduction = env.NODE_ENV === 'production';
+  const url = parseUrl(readRequired(env, 'LDAP_URL'), allowInsecure, isProduction);
   const isLdaps = new URL(url).protocol === 'ldaps:';
 
   return {

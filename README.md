@@ -95,6 +95,26 @@ Seed jest wbudowany w obraz (`docker/ldap/Dockerfile` + `bootstrap/50-seed.ldif`
 
 Wydziałowy LABS (`ldaps://labs.wmi.amu.edu.pl:636`) to osobne środowisko; lokalny kontener jest do codziennej pracy bez VPN/SSH. Backend (SCRUM-49): najpierw wyszukaj DN po `uid` jako admin, potem bind hasłem użytkownika, potem grupa przez `(member=<dn>)`.
 
+### Konfiguracja LDAP w API
+
+| Zmienna                                | Opis                                                                                                        |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `LDAP_URL`                             | Adres serwera. Domyślnie akceptowany jest **tylko** `ldaps://`.                                             |
+| `LDAP_BASE_DN`                         | Gdzie szukać użytkowników.                                                                                  |
+| `LDAP_ADMIN_DN`, `LDAP_ADMIN_PASSWORD` | Konto serwisowe do wyszukiwania (na produkcji: tylko odczyt).                                               |
+| `LDAP_ALLOW_INSECURE`                  | `true` pozwala na nieszyfrowane `ldap://`. **Tylko lokalnie**, dla kontenera z Compose (`LDAP_TLS=false`).  |
+| `LDAP_LOGIN_ATTRIBUTE`                 | Atrybut z loginem: `uid` (lokalny OpenLDAP), w Active Directory zwykle `sAMAccountName`. Musi być unikalny. |
+| `LDAP_TIMEOUT_MS`                      | Timeout połączenia i operacji (domyślnie 5000).                                                             |
+| `LDAP_TLS_CA_FILE`                     | Opcjonalny plik PEM z CA serwera LDAPS (ścieżka wewnątrz kontenera `api`, montowana read-only).             |
+
+`LDAP_ALLOW_INSECURE`:
+
+- bez tej zmiennej (albo z wartością inną niż `true`) API odrzuca `ldap://` i logowanie kończy się błędem 503;
+- przy `NODE_ENV=production` flaga jest **ignorowana** — `ldap://` jest zawsze odrzucane;
+- weryfikacja certyfikatu przy `ldaps://` jest zawsze włączona i nie da się jej wyłączyć konfiguracją.
+
+W `.env.example` jest `LDAP_ALLOW_INSECURE=true`, bo lokalny kontener działa bez TLS. Kto ma starszy `.env`, musi dopisać tę linię. Na serwerze tej zmiennej nie ustawiamy.
+
 ## Skrypty
 
 | Komenda             | Opis                                         |

@@ -5,6 +5,8 @@ import jwt from 'jsonwebtoken';
 import { getJwtExpiresInSeconds, getJwtSecret } from './auth.constants';
 import { RevokedTokensRepository } from './revoked-tokens.repository';
 
+const JWT_ALGORITHM = 'HS256';
+
 export interface AuthUserPayload {
   sub: string;
   login: string;
@@ -36,6 +38,7 @@ export class TokenService {
       },
       getJwtSecret(),
       {
+        algorithm: JWT_ALGORITHM,
         subject: input.userId,
         jwtid: randomUUID(),
         expiresIn: getJwtExpiresInSeconds(),
@@ -47,7 +50,7 @@ export class TokenService {
     let decoded: string | jwt.JwtPayload;
 
     try {
-      decoded = jwt.verify(token, getJwtSecret());
+      decoded = jwt.verify(token, getJwtSecret(), { algorithms: [JWT_ALGORITHM] });
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
         throw new UnauthorizedException('Token expired');
@@ -86,7 +89,7 @@ export class TokenService {
     let decoded: string | jwt.JwtPayload;
 
     try {
-      decoded = jwt.verify(token, getJwtSecret());
+      decoded = jwt.verify(token, getJwtSecret(), { algorithms: [JWT_ALGORITHM] });
     } catch {
       // Logout must stay idempotent when the token is already expired or malformed.
       return;

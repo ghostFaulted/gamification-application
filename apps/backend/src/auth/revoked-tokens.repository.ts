@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { eq, lte } from 'drizzle-orm';
 import { db, revokedTokens } from '../db';
 
@@ -9,6 +9,8 @@ export abstract class RevokedTokensRepository {
 
 @Injectable()
 export class DrizzleRevokedTokensRepository extends RevokedTokensRepository {
+  private readonly logger = new Logger(DrizzleRevokedTokensRepository.name);
+
   async revoke(jti: string, expiresAt: Date): Promise<void> {
     await db
       .insert(revokedTokens)
@@ -16,7 +18,12 @@ export class DrizzleRevokedTokensRepository extends RevokedTokensRepository {
       .onConflictDoNothing({ target: revokedTokens.jti });
 
     // Opportunistically prune already expired records to keep the table bounded.
-    await db.delete(revokedTokens).where(lte(revokedTokens.expiresAt, new Date()));
+    // Best-effort: the token is already revoked, so a failed cleanup must not fail the caller.
+    try {
+      await db.delete(revokedTokens).where(lte(revokedTokens.expiresAt, new Date()));
+    } catch (error) {
+      this.logger.warn(`Pruning expired revoked tokens failed: ${(error as Error).name}`);
+    }
   }
 
   async isRevoked(jti: string): Promise<boolean> {
