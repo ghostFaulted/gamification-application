@@ -10,11 +10,11 @@ function createFakeDb(existingLogins: Set<string>) {
         return {
           onConflictDoNothing: () => ({
             returning: async () => {
-              const created: Array<{ id: string }> = [];
+              const created: Array<{ login: string }> = [];
               for (const row of rows) {
                 if (!existingLogins.has(row.login)) {
                   existingLogins.add(row.login);
-                  created.push({ id: `uuid-${row.login}` });
+                  created.push({ login: row.login });
                 }
               }
               return created;
@@ -46,7 +46,12 @@ describe('users.repository', () => {
 
     const result = await bulkInsertStudents([], fakeDb);
 
-    expect(result).toEqual({ createdCount: 0, skippedDuplicatesCount: 0 });
+    expect(result).toEqual({
+      createdCount: 0,
+      skippedDuplicatesCount: 0,
+      createdLogins: [],
+      skippedLogins: [],
+    });
     expect(insertedCalls).toHaveLength(0);
   });
 
@@ -62,6 +67,8 @@ describe('users.repository', () => {
     expect(result).toEqual({
       createdCount: 2,
       skippedDuplicatesCount: 3,
+      createdLogins: ['s111111', 's333333'],
+      skippedLogins: ['s111111', 's222222', 's333333'],
     });
     expect(insertedCalls).toEqual([
       [
@@ -79,7 +86,12 @@ describe('users.repository', () => {
 
     const result = await bulkInsertStudents(logins, fakeDb);
 
-    expect(result).toEqual({ createdCount: 1250, skippedDuplicatesCount: 0 });
+    expect(result).toMatchObject({
+      createdCount: 1250,
+      skippedDuplicatesCount: 0,
+      skippedLogins: [],
+    });
+    expect(result.createdLogins).toEqual(logins);
     expect(insertedCalls).toHaveLength(2);
     expect(insertedCalls[0]).toHaveLength(1000);
     expect(insertedCalls[1]).toHaveLength(250);

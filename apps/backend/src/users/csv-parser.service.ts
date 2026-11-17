@@ -22,7 +22,17 @@ export interface ParsedUsersCsvResult {
 
 type CsvDelimiter = ',' | ';';
 
-const MAX_CSV_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+// A parsed record with `info.lines`: its line in the source file (blank lines included).
+interface CsvRecordWithInfo {
+  record: string[];
+  info: { lines: number };
+}
+
+// Explicit, so a stray LF in a CRLF file (or the reverse) ends a record instead of being
+// trimmed away and merging two rows. CRLF must come first.
+const RECORD_DELIMITERS = ['\r\n', '\n', '\r'];
+
+export const MAX_CSV_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_LOGIN_LENGTH = 64;
 const LOGIN_PATTERN = /^[a-z0-9._-]+$/;
 const ALLOWED_MIME_TYPES = new Set([
@@ -69,15 +79,17 @@ export class CsvParserService {
 
     const delimiter = this.detectDelimiter(text);
 
-    let records: string[][];
+    let records: CsvRecordWithInfo[];
     try {
       records = parse(text, {
         bom: true,
         delimiter,
         trim: true,
         skip_empty_lines: true,
+        record_delimiter: RECORD_DELIMITERS,
         relax_column_count: true,
-      }) as string[][];
+        info: true,
+      }) as unknown as CsvRecordWithInfo[];
     } catch (error) {
       if (error instanceof CsvError) {
         throw new BadRequestException(`Malformed CSV file: ${error.message}`);
@@ -89,7 +101,12 @@ export class CsvParserService {
       throw new BadRequestException('CSV file is empty');
     }
 
-    const headers = records[0].map((header) => header.trim().toLowerCase());
+    // info.lines is the last line of a record, so it is exact only for single-line values.
+    if (records.some(({ record }) => record.some((field) => /[\r\n]/.test(field)))) {
+      throw new BadRequestException('CSV values must not contain line breaks');
+    }
+
+    const headers = records[0].record.map((header) => header.trim().toLowerCase());
     const loginIndices = headers.reduce<number[]>((acc, header, index) => {
       if (header === 'login') {
         acc.push(index);
@@ -110,8 +127,8 @@ export class CsvParserService {
     const errors: CsvRowError[] = [];
 
     for (let i = 1; i < records.length; i += 1) {
-      const row = records[i];
-      const rowNumber = i + 1;
+      const { record: row, info } = records[i];
+      const rowNumber = info.lines;
       const rawValue = row[loginColumnIndex] ?? '';
       const normalized = rawValue.trim().toLowerCase();
 
@@ -180,6 +197,7 @@ export class CsvParserService {
         delimiter,
         trim: true,
         skip_empty_lines: true,
+        record_delimiter: RECORD_DELIMITERS,
         to: 1,
       }) as string[][];
 

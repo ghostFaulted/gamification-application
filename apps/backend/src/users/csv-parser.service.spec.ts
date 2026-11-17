@@ -68,6 +68,52 @@ describe('CsvParserService', () => {
     ]);
   });
 
+  it('reports source line numbers when blank lines are skipped', () => {
+    const csv = ['login', '', 's100001', '', '', 'bad login', '  ', 's100002', ''].join('\n');
+
+    const result = service.parseUsersCsv(makeCsvFile(csv));
+
+    expect(result.validLogins).toEqual(['s100001', 's100002']);
+    expect(result.errors).toEqual([
+      { row: 6, value: 'bad login', reason: 'Login contains invalid characters' },
+    ]);
+  });
+
+  it('reports source line numbers for CRLF files', () => {
+    const csv = ['login', 's100001', '', 'bad login', 's100002'].join('\r\n');
+
+    const result = service.parseUsersCsv(makeCsvFile(csv));
+
+    expect(result.errors).toEqual([
+      { row: 4, value: 'bad login', reason: 'Login contains invalid characters' },
+    ]);
+  });
+
+  it('does not merge rows when a CRLF file contains a stray LF or CR', () => {
+    const result = service.parseUsersCsv(
+      makeCsvFile('login,name\r\ns1,\ns2,John\r\ns3,\rbad login,\r\n'),
+    );
+
+    expect(result.validLogins).toEqual(['s1', 's2', 's3']);
+    expect(result.errors).toEqual([
+      { row: 5, value: 'bad login', reason: 'Login contains invalid characters' },
+    ]);
+  });
+
+  it('rejects quoted line breaks in CRLF files', () => {
+    expect(() => service.parseUsersCsv(makeCsvFile('login\r\n"bad\r\nlogin"\r\ns1\r\n'))).toThrow(
+      'CSV values must not contain line breaks',
+    );
+  });
+
+  it('rejects values that span several lines', () => {
+    const csv = ['login', '"bad', 'login"', 's100001'].join('\n');
+
+    expect(() => service.parseUsersCsv(makeCsvFile(csv))).toThrow(
+      'CSV values must not contain line breaks',
+    );
+  });
+
   it('rejects missing file', () => {
     expect(() => service.parseUsersCsv(undefined)).toThrow(BadRequestException);
   });
