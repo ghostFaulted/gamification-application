@@ -48,12 +48,19 @@ describe('loadLdapConfig', () => {
       LDAP_ALLOW_INSECURE: 'true',
     });
     expect(config.url).toBe('ldap://ldap:389');
+    expect(config.tlsOptions).toBeUndefined();
+  });
+
+  it('keeps leading and trailing spaces in LDAP_ADMIN_PASSWORD', () => {
+    const config = loadLdapConfig({ ...baseEnv, LDAP_ADMIN_PASSWORD: '  secret with spaces ' });
+
+    expect(config.bindPassword).toBe('  secret with spaces ');
   });
 
   it('keeps certificate verification on when insecure mode is allowed', () => {
     const config = loadLdapConfig({ ...baseEnv, LDAP_ALLOW_INSECURE: 'true' });
 
-    expect(config.tlsOptions.rejectUnauthorized).toBe(true);
+    expect(config.tlsOptions?.rejectUnauthorized).toBe(true);
   });
 
   it('rejects schemes other than ldap and ldaps', () => {
@@ -100,8 +107,8 @@ describe('loadLdapConfig', () => {
 
       const config = loadLdapConfig({ ...baseEnv, LDAP_TLS_CA_FILE: caFile });
 
-      expect(config.tlsOptions.ca?.toString()).toBe('test-ca');
-      expect(config.tlsOptions.rejectUnauthorized).toBe(true);
+      expect(config.tlsOptions?.ca?.toString()).toBe('test-ca');
+      expect(config.tlsOptions?.rejectUnauthorized).toBe(true);
     });
 
     it('fails when the file cannot be read', () => {

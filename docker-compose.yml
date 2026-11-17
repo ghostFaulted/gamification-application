@@ -59,6 +59,7 @@ services:
       LDAP_ALLOW_INSECURE: ${LDAP_ALLOW_INSECURE:-false}
       LDAP_LOGIN_ATTRIBUTE: ${LDAP_LOGIN_ATTRIBUTE:-uid}
       LDAP_TIMEOUT_MS: ${LDAP_TIMEOUT_MS:-5000}
+      LDAP_TLS_CA_FILE: ${LDAP_TLS_CA_FILE:-}
     depends_on:
       database:
         condition: service_healthy

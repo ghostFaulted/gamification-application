@@ -14,12 +14,21 @@ export interface LdapConfig {
   bindPassword: string;
   loginAttribute: string;
   timeoutMs: number;
-  tlsOptions: ConnectionOptions;
+  /** Set only for ldaps://; ldapts starts a TLS handshake whenever tlsOptions are present. */
+  tlsOptions: ConnectionOptions | undefined;
 }
 
 function readRequired(env: NodeJS.ProcessEnv, name: string): string {
   const value = env[name]?.trim();
   if (!value) {
+    throw new LdapConfigError(`${name} environment variable must be set`);
+  }
+  return value;
+}
+
+function readRequiredSecret(env: NodeJS.ProcessEnv, name: string): string {
+  const value = env[name];
+  if (!value?.trim()) {
     throw new LdapConfigError(`${name} environment variable must be set`);
   }
   return value;
@@ -90,14 +99,16 @@ function buildTlsOptions(caFile: string | undefined): ConnectionOptions {
 
 export function loadLdapConfig(env: NodeJS.ProcessEnv = process.env): LdapConfig {
   const allowInsecure = env.LDAP_ALLOW_INSECURE?.trim().toLowerCase() === 'true';
+  const url = parseUrl(readRequired(env, 'LDAP_URL'), allowInsecure);
+  const isLdaps = new URL(url).protocol === 'ldaps:';
 
   return {
-    url: parseUrl(readRequired(env, 'LDAP_URL'), allowInsecure),
+    url,
     baseDn: readRequired(env, 'LDAP_BASE_DN'),
     bindDn: readRequired(env, 'LDAP_ADMIN_DN'),
-    bindPassword: readRequired(env, 'LDAP_ADMIN_PASSWORD'),
+    bindPassword: readRequiredSecret(env, 'LDAP_ADMIN_PASSWORD'),
     loginAttribute: parseLoginAttribute(env.LDAP_LOGIN_ATTRIBUTE),
     timeoutMs: parseTimeout(env.LDAP_TIMEOUT_MS),
-    tlsOptions: buildTlsOptions(env.LDAP_TLS_CA_FILE),
+    tlsOptions: isLdaps ? buildTlsOptions(env.LDAP_TLS_CA_FILE) : undefined,
   };
 }

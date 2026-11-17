@@ -101,6 +101,17 @@ describe('LdapService', () => {
     );
   });
 
+  it('does not pass TLS options for explicitly allowed plain ldap://', async () => {
+    process.env.LDAP_URL = 'ldap://ldap:389';
+    process.env.LDAP_ALLOW_INSECURE = 'true';
+
+    await service.authenticate('student1', 'correct-password');
+
+    const [options] = ClientMock.mock.calls[0];
+    expect(options.url).toBe('ldap://ldap:389');
+    expect(options.tlsOptions).toBeUndefined();
+  });
+
   it('uses a hardened search with an escaped equality filter', async () => {
     await service.authenticate('student1', 'correct-password');
 
@@ -110,10 +121,10 @@ describe('LdapService', () => {
       expect.objectContaining({
         scope: 'sub',
         derefAliases: 'never',
-        sizeLimit: 2,
         attributes: ['uid', 'mail'],
       }),
     );
+    expect(options.sizeLimit).toBeUndefined();
     expect(options.timeLimit).toBeGreaterThan(0);
     expect(options.filter).toBeInstanceOf(EqualityFilter);
   });

@@ -107,7 +107,9 @@ export class LdapService {
         scope: 'sub',
         filter: new EqualityFilter({ attribute: config.loginAttribute, value: login }),
         derefAliases: 'never',
-        sizeLimit: 2,
+        // No client sizeLimit on purpose: when it is set, ldapts silently truncates results on
+        // sizeLimitExceeded, so a server-side limit could hide a duplicate login. Without it the
+        // server limit surfaces as SizeLimitExceededError. The login attribute must be unique.
         timeLimit: Math.max(1, Math.ceil(config.timeoutMs / 1000)),
         attributes: [config.loginAttribute, 'mail'],
       });
@@ -118,7 +120,7 @@ export class LdapService {
         throw new LdapUnavailableError({ cause: error });
       }
       entries = [];
-      this.logger.warn(`LDAP search for login "${login}" matched more than one entry`);
+      this.logger.warn(`LDAP search for login "${login}" exceeded the server size limit`);
     }
 
     if (entries.length > 1) {
