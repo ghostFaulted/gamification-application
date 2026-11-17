@@ -1,8 +1,9 @@
 import { Controller, Get, type INestApplication, UseGuards } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { AUTH_COOKIE_NAME } from '../src/auth/auth.constants';
+import { AUTH_COOKIE_NAME, getJwtSecret } from '../src/auth/auth.constants';
 import { AuthModule } from '../src/auth/auth.module';
 import { JwtAuthGuard } from '../src/auth/jwt-auth.guard';
 import { RevokedTokensRepository } from '../src/auth/revoked-tokens.repository';
@@ -198,10 +199,26 @@ describe('POST /api/auth/login (e2e)', () => {
     expect(res.headers['set-cookie']).toBeUndefined();
   });
 
-  it('returns 403 when the LDAP account is not registered in the application', async () => {
-    const res = await login({ login: 'student2', password: VALID_PASSWORD }).expect(403);
+  it('answers an unregistered LDAP account exactly like a wrong password', async () => {
+    const unregistered = await login({ login: 'student2', password: VALID_PASSWORD }).expect(401);
+    const wrongPassword = await login({ login: 'student1', password: 'wrong' }).expect(401);
 
-    expect(res.headers['set-cookie']).toBeUndefined();
+    expect(unregistered.body).toEqual(wrongPassword.body);
+    expect(unregistered.headers['set-cookie']).toBeUndefined();
+  });
+
+  it('rejects a token signed with an algorithm other than HS256', async () => {
+    const forged = jwt.sign({ login: 'student1', role: 'admin' }, getJwtSecret(), {
+      algorithm: 'HS512',
+      subject: '11111111-1111-1111-1111-111111111111',
+      jwtid: '33333333-3333-3333-3333-333333333333',
+      expiresIn: 60,
+    });
+
+    await request(app.getHttpServer())
+      .get('/api/test-login/protected')
+      .set('Cookie', `${AUTH_COOKIE_NAME}=${forged}`)
+      .expect(401);
   });
 
   it.each([

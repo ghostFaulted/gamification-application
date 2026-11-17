@@ -1,6 +1,6 @@
 import {
-  ForbiddenException,
   Injectable,
+  Logger,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -15,8 +15,12 @@ export interface LoginResult {
   user: AuthUser;
 }
 
+const INVALID_CREDENTIALS_MESSAGE = 'Invalid login or password';
+
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly ldap: LdapService,
     private readonly users: UsersRepository,
@@ -27,9 +31,13 @@ export class AuthService {
     const ldapUser = await this.authenticateWithLdap(login, password);
 
     // Only accounts already registered in the app (CSV import or admin) may sign in.
+    // Same response as a wrong password: anything else would confirm valid LABS credentials.
     const user = await this.users.findByLogin(ldapUser.login);
     if (!user) {
-      throw new ForbiddenException('Account is not registered in the application');
+      this.logger.warn(
+        `LDAP login "${ldapUser.login}" succeeded but the account is not registered`,
+      );
+      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
 
     const token = this.tokens.signAccessToken({
@@ -46,7 +54,7 @@ export class AuthService {
       return await this.ldap.authenticate(login, password);
     } catch (error) {
       if (error instanceof LdapInvalidCredentialsError) {
-        throw new UnauthorizedException('Invalid login or password');
+        throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
       }
       if (error instanceof LdapUnavailableError) {
         throw new ServiceUnavailableException('Authentication service is unavailable');
