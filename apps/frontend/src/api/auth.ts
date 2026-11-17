@@ -20,3 +20,11 @@ export async function login({ login, password }: LoginCredentials): Promise<void
     throw new LoginError('Nieprawidłowy login lub hasło.');
   }
 }
+
+/**
+ * Mock logout - the backend does not exist yet.
+ * TODO: replace with `apiFetch('/api/auth/logout', { method: 'POST' })` when the backend is ready.
+ */
+export async function logout(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+}
