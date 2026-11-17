@@ -1,0 +1,198 @@
+# Seed data for local OpenLDAP (SCRUM-48).
+# Base DN is created by osixia from LDAP_DOMAIN=labs.wmi.amu.edu.pl:
+#   dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+# Shape mirrors faculty LABS (OU=People / OU=Groups, memberOf-style groups).
+# Passwords match logins (student1, lecturer1, admin1, ...).
+
+dn: ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Students,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: organizationalUnit
+ou: Students
+
+dn: ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: organizationalUnit
+ou: Faculty
+
+dn: ou=Groups,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: organizationalUnit
+ou: Groups
+
+dn: cn=student1,ou=Students,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: student1
+sn: Student
+uid: student1
+mail: student1@st.amu.edu.pl
+userPassword: student1
+
+dn: cn=student2,ou=Students,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: student2
+sn: Student
+uid: student2
+mail: student2@st.amu.edu.pl
+userPassword: student2
+
+dn: cn=student3,ou=Students,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: student3
+sn: Student
+uid: student3
+mail: student3@st.amu.edu.pl
+userPassword: student3
+
+dn: cn=student4,ou=Students,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: student4
+sn: Student
+uid: student4
+mail: student4@st.amu.edu.pl
+userPassword: student4
+
+dn: cn=student5,ou=Students,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: student5
+sn: Student
+uid: student5
+mail: student5@st.amu.edu.pl
+userPassword: student5
+
+dn: cn=lecturer1,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: lecturer1
+sn: Lecturer
+uid: lecturer1
+mail: lecturer1@amu.edu.pl
+userPassword: lecturer1
+
+dn: cn=lecturer2,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: lecturer2
+sn: Lecturer
+uid: lecturer2
+mail: lecturer2@amu.edu.pl
+userPassword: lecturer2
+
+dn: cn=lecturer3,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: lecturer3
+sn: Lecturer
+uid: lecturer3
+mail: lecturer3@amu.edu.pl
+userPassword: lecturer3
+
+dn: cn=lecturer4,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: lecturer4
+sn: Lecturer
+uid: lecturer4
+mail: lecturer4@amu.edu.pl
+userPassword: lecturer4
+
+dn: cn=lecturer5,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: lecturer5
+sn: Lecturer
+uid: lecturer5
+mail: lecturer5@amu.edu.pl
+userPassword: lecturer5
+
+dn: cn=admin1,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: admin1
+sn: Admin
+uid: admin1
+mail: admin1@amu.edu.pl
+userPassword: admin1
+
+dn: cn=admin2,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: admin2
+sn: Admin
+uid: admin2
+mail: admin2@amu.edu.pl
+userPassword: admin2
+
+dn: cn=admin3,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: admin3
+sn: Admin
+uid: admin3
+mail: admin3@amu.edu.pl
+userPassword: admin3
+
+dn: cn=admin4,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: admin4
+sn: Admin
+uid: admin4
+mail: admin4@amu.edu.pl
+userPassword: admin4
+
+dn: cn=admin5,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: admin5
+sn: Admin
+uid: admin5
+mail: admin5@amu.edu.pl
+userPassword: admin5
+
+dn: cn=students,ou=Groups,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: groupOfNames
+cn: students
+member: cn=student1,ou=Students,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+member: cn=student2,ou=Students,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+member: cn=student3,ou=Students,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+member: cn=student4,ou=Students,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+member: cn=student5,ou=Students,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+
+dn: cn=lecturers,ou=Groups,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: groupOfNames
+cn: lecturers
+member: cn=lecturer1,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+member: cn=lecturer2,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+member: cn=lecturer3,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+member: cn=lecturer4,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+member: cn=lecturer5,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+
+dn: cn=admins,ou=Groups,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+objectClass: groupOfNames
+cn: admins
+member: cn=admin1,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+member: cn=admin2,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+member: cn=admin3,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+member: cn=admin4,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
+member: cn=admin5,ou=Faculty,ou=People,dc=labs,dc=wmi,dc=amu,dc=edu,dc=pl
