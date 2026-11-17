@@ -160,7 +160,9 @@ export class CsvParserService {
       }
 
       const loginCount = header.filter((h) => h.trim().toLowerCase() === 'login').length;
-      const score = (loginCount > 0 ? 1000 : 0) + header.length;
+      // Prefer exactly one "login" column so a semicolon file whose first cell
+      // contains commas is not mistaken for a comma CSV with duplicate headers.
+      const score = (loginCount === 1 ? 2000 : loginCount > 0 ? 1000 : 0) + header.length;
 
       if (score > bestScore) {
         bestScore = score;

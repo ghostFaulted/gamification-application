@@ -138,4 +138,16 @@ describe('CsvParserService', () => {
       errors: [],
     });
   });
+
+  it('prefers semicolon when comma parsing would invent duplicate login headers', () => {
+    const csv = 'login,login,notes;login\nfoo,bar,baz;s123456\n';
+
+    const result = service.parseUsersCsv(makeCsvFile(csv));
+
+    expect(result).toEqual({
+      validLogins: ['s123456'],
+      invalidRowsCount: 0,
+      errors: [],
+    });
+  });
 });
