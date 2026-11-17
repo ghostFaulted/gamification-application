@@ -89,6 +89,23 @@ describe('CsvParserService', () => {
     ]);
   });
 
+  it('does not merge rows when a CRLF file contains a stray LF or CR', () => {
+    const result = service.parseUsersCsv(
+      makeCsvFile('login,name\r\ns1,\ns2,John\r\ns3,\rbad login,\r\n'),
+    );
+
+    expect(result.validLogins).toEqual(['s1', 's2', 's3']);
+    expect(result.errors).toEqual([
+      { row: 5, value: 'bad login', reason: 'Login contains invalid characters' },
+    ]);
+  });
+
+  it('rejects quoted line breaks in CRLF files', () => {
+    expect(() => service.parseUsersCsv(makeCsvFile('login\r\n"bad\r\nlogin"\r\ns1\r\n'))).toThrow(
+      'CSV values must not contain line breaks',
+    );
+  });
+
   it('rejects values that span several lines', () => {
     const csv = ['login', '"bad', 'login"', 's100001'].join('\n');
 

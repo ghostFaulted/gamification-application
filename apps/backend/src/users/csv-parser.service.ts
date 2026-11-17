@@ -28,6 +28,10 @@ interface CsvRecordWithInfo {
   info: { lines: number };
 }
 
+// Explicit, so a stray LF in a CRLF file (or the reverse) ends a record instead of being
+// trimmed away and merging two rows. CRLF must come first.
+const RECORD_DELIMITERS = ['\r\n', '\n', '\r'];
+
 export const MAX_CSV_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_LOGIN_LENGTH = 64;
 const LOGIN_PATTERN = /^[a-z0-9._-]+$/;
@@ -82,6 +86,7 @@ export class CsvParserService {
         delimiter,
         trim: true,
         skip_empty_lines: true,
+        record_delimiter: RECORD_DELIMITERS,
         relax_column_count: true,
         info: true,
       }) as unknown as CsvRecordWithInfo[];
@@ -192,6 +197,7 @@ export class CsvParserService {
         delimiter,
         trim: true,
         skip_empty_lines: true,
+        record_delimiter: RECORD_DELIMITERS,
         to: 1,
       }) as string[][];
 
