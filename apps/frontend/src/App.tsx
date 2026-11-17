@@ -1,44 +1,55 @@
-import { ROLES, type Role } from '@gamification/shared';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router';
 import { useAuth } from './auth/AuthContext';
 import { AuthProvider } from './auth/AuthProvider';
-import { AppHeader } from './components/AppHeader';
+import { AppLayout } from './components/AppLayout';
 import { LoginPage } from './pages/LoginPage';
-
-const roleLabels: Record<Role, string> = {
-  student: 'Student',
-  lecturer: 'Prowadzący',
-  admin: 'Administrator',
-};
+import { RoleHomePage } from './pages/RoleHomePage';
+import { ProtectedRoute, type RedirectState } from './routes/ProtectedRoute';
+import { ROLE_HOME } from './routes/roles';
 
 export function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<LoginRoute />} />
+
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AppLayout />}>
+              <Route index element={<HomeRedirect />} />
+              <Route element={<ProtectedRoute roles={['student']} />}>
+                <Route path="/student" element={<RoleHomePage role="student" />} />
+              </Route>
+              <Route element={<ProtectedRoute roles={['lecturer']} />}>
+                <Route path="/lecturer" element={<RoleHomePage role="lecturer" />} />
+              </Route>
+              <Route element={<ProtectedRoute roles={['admin']} />}>
+                <Route path="/admin" element={<RoleHomePage role="admin" />} />
+              </Route>
+            </Route>
+          </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
-function AppContent() {
-  // Bez routera: prosty przełącznik widoku na podstawie stanu zalogowania.
+/** "/" sends a signed-in user to the start page of their role. */
+function HomeRedirect() {
   const { user } = useAuth();
+  return <Navigate to={user ? ROLE_HOME[user.role] : '/login'} replace />;
+}
 
-  if (!user) {
-    return <LoginPage />;
+/** The login form; once signed in, goes back to the page the user wanted or to their start page. */
+function LoginRoute() {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (user) {
+    const from = (location.state as RedirectState | null)?.from;
+    return <Navigate to={from ?? ROLE_HOME[user.role]} replace />;
   }
-
-  return (
-    <>
-      <AppHeader />
-      <main className="page">
-        <h1>Grywalizacja</h1>
-        <p>Zalogowano jako {user}.</p>
-        <h2>Role w systemie</h2>
-        <ul>
-          {ROLES.map((role) => (
-            <li key={role}>{roleLabels[role]}</li>
-          ))}
-        </ul>
-      </main>
-    </>
-  );
+  return <LoginPage />;
 }

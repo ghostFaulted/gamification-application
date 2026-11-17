@@ -1,12 +1,13 @@
 import { createContext, useContext } from 'react';
+import type { AuthUser } from '@gamification/shared';
 import type { LoginCredentials } from '../api/auth';
 
 /** Why the last session ended: the user clicked "Wyloguj" or the API answered 401. */
 export type LogoutReason = 'manual' | 'expired';
 
 export interface AuthContextValue {
-  /** Login of the signed-in user, or null when nobody is signed in. */
-  user: string | null;
+  /** The signed-in user (login and role), or null when nobody is signed in. */
+  user: AuthUser | null;
   logoutReason: LogoutReason | null;
   isLoggingOut: boolean;
   /** Throws LoginError when the credentials are rejected. */
