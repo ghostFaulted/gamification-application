@@ -1,4 +1,4 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { forwardRef, Module, type OnModuleInit } from '@nestjs/common';
 import { LdapModule } from '../ldap/ldap.module';
 import { UsersModule } from '../users/users.module';
 import { getJwtExpiresInSeconds, getJwtSecret } from './auth.constants';
@@ -12,7 +12,7 @@ import {
 import { TokenService } from './token.service';
 
 @Module({
-  imports: [LdapModule, UsersModule],
+  imports: [LdapModule, forwardRef(() => UsersModule)],
   controllers: [AuthController],
   providers: [
     AuthService,

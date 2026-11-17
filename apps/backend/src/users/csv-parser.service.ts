@@ -22,7 +22,7 @@ export interface ParsedUsersCsvResult {
 
 type CsvDelimiter = ',' | ';';
 
-const MAX_CSV_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+export const MAX_CSV_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_LOGIN_LENGTH = 64;
 const LOGIN_PATTERN = /^[a-z0-9._-]+$/;
 const ALLOWED_MIME_TYPES = new Set([
