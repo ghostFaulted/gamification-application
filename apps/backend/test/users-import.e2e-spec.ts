@@ -114,6 +114,14 @@ describe('POST /api/users/import', () => {
     expect(usersRepository.insertedLogins).toEqual([]);
   });
 
+  it('returns 400 for a CSV value with a line break', async () => {
+    const res = await importAs('admin')
+      .attach('file', Buffer.from('login\n"bad\nlogin"\ns1\n'), 'users.csv')
+      .expect(400);
+
+    expect(res.body.message).toBe('CSV values must not contain line breaks');
+  });
+
   it('imports valid logins and reports invalid rows', async () => {
     const res = await importAs('lecturer')
       .attach('file', Buffer.from('login;name\ns1;Jan\nS1;Jan\nbad login;Anna\n'), 'users.csv')

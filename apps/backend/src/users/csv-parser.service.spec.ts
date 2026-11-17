@@ -79,6 +79,24 @@ describe('CsvParserService', () => {
     ]);
   });
 
+  it('reports source line numbers for CRLF files', () => {
+    const csv = ['login', 's100001', '', 'bad login', 's100002'].join('\r\n');
+
+    const result = service.parseUsersCsv(makeCsvFile(csv));
+
+    expect(result.errors).toEqual([
+      { row: 4, value: 'bad login', reason: 'Login contains invalid characters' },
+    ]);
+  });
+
+  it('rejects values that span several lines', () => {
+    const csv = ['login', '"bad', 'login"', 's100001'].join('\n');
+
+    expect(() => service.parseUsersCsv(makeCsvFile(csv))).toThrow(
+      'CSV values must not contain line breaks',
+    );
+  });
+
   it('rejects missing file', () => {
     expect(() => service.parseUsersCsv(undefined)).toThrow(BadRequestException);
   });

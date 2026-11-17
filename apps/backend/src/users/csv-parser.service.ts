@@ -96,6 +96,11 @@ export class CsvParserService {
       throw new BadRequestException('CSV file is empty');
     }
 
+    // info.lines is the last line of a record, so it is exact only for single-line values.
+    if (records.some(({ record }) => record.some((field) => /[\r\n]/.test(field)))) {
+      throw new BadRequestException('CSV values must not contain line breaks');
+    }
+
     const headers = records[0].record.map((header) => header.trim().toLowerCase());
     const loginIndices = headers.reduce<number[]>((acc, header, index) => {
       if (header === 'login') {
