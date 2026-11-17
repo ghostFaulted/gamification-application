@@ -56,6 +56,9 @@ services:
       LDAP_BASE_DN: ${LDAP_BASE_DN}
       LDAP_ADMIN_DN: ${LDAP_ADMIN_DN}
       LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD}
+      LDAP_ALLOW_INSECURE: ${LDAP_ALLOW_INSECURE:-false}
+      LDAP_LOGIN_ATTRIBUTE: ${LDAP_LOGIN_ATTRIBUTE:-uid}
+      LDAP_TIMEOUT_MS: ${LDAP_TIMEOUT_MS:-5000}
     depends_on:
       database:
         condition: service_healthy
