@@ -20,6 +20,8 @@ export interface ParsedUsersCsvResult {
   errors: CsvRowError[];
 }
 
+type CsvDelimiter = ',' | ';';
+
 const MAX_CSV_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_LOGIN_LENGTH = 64;
 const LOGIN_PATTERN = /^[a-z0-9._-]+$/;
@@ -65,11 +67,13 @@ export class CsvParserService {
       throw new BadRequestException('CSV file must be encoded in valid UTF-8');
     }
 
+    const delimiter = this.detectDelimiter(text);
+
     let records: string[][];
     try {
       records = parse(text, {
         bom: true,
-        delimiter: [',', ';'],
+        delimiter,
         trim: true,
         skip_empty_lines: true,
         relax_column_count: true,
@@ -142,5 +146,47 @@ export class CsvParserService {
       invalidRowsCount: errors.length,
       errors,
     };
+  }
+
+  private detectDelimiter(text: string): CsvDelimiter {
+    const candidates: CsvDelimiter[] = [',', ';'];
+    let bestDelimiter: CsvDelimiter = ',';
+    let bestScore = -1;
+
+    for (const delimiter of candidates) {
+      const header = this.parseHeaderWithDelimiter(text, delimiter);
+      if (!header) {
+        continue;
+      }
+
+      const loginCount = header.filter((h) => h.trim().toLowerCase() === 'login').length;
+      const score = (loginCount > 0 ? 1000 : 0) + header.length;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestDelimiter = delimiter;
+      }
+    }
+
+    return bestDelimiter;
+  }
+
+  private parseHeaderWithDelimiter(text: string, delimiter: CsvDelimiter): string[] | null {
+    try {
+      const records = parse(text, {
+        bom: true,
+        delimiter,
+        trim: true,
+        skip_empty_lines: true,
+        to: 1,
+      }) as string[][];
+
+      return records[0] ?? null;
+    } catch (error) {
+      if (error instanceof CsvError) {
+        return null;
+      }
+      throw error;
+    }
   }
 }

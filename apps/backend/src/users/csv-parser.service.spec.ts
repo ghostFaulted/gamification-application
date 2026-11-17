@@ -114,4 +114,28 @@ describe('CsvParserService', () => {
       BadRequestException,
     );
   });
+
+  it('treats semicolons as literal characters in comma-separated CSVs', () => {
+    const csv = ['"notes;meta",login', 'Doe;John,s123456', '"Smith;Jane",s654321'].join('\n');
+
+    const result = service.parseUsersCsv(makeCsvFile(csv));
+
+    expect(result).toEqual({
+      validLogins: ['s123456', 's654321'],
+      invalidRowsCount: 0,
+      errors: [],
+    });
+  });
+
+  it('treats commas as literal characters in semicolon-separated CSVs', () => {
+    const csv = ['"notes, meta";login', 'Doe, John;s123456', '"Smith, Jane";s654321'].join('\n');
+
+    const result = service.parseUsersCsv(makeCsvFile(csv));
+
+    expect(result).toEqual({
+      validLogins: ['s123456', 's654321'],
+      invalidRowsCount: 0,
+      errors: [],
+    });
+  });
 });
