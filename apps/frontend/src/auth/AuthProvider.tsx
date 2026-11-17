@@ -18,6 +18,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // An expired session is already gone on the server, so only a manual logout calls the API.
     if (reason === 'manual') {
       setIsLoggingOut(true);
+      // The user is leaving anyway, so a 401 from the logout call must not show "Sesja wygasła".
+      setUnauthorizedHandler(null);
       try {
         await apiLogout();
       } catch {

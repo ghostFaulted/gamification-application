@@ -1,3 +1,5 @@
+import { apiFetch } from './client';
+
 export interface LoginCredentials {
   login: string;
   password: string;
@@ -21,10 +23,7 @@ export async function login({ login, password }: LoginCredentials): Promise<void
   }
 }
 
-/**
- * Mock logout - the backend does not exist yet.
- * TODO: replace with `apiFetch('/api/auth/logout', { method: 'POST' })` when the backend is ready.
- */
+/** Ends the session on the server: revokes the token and clears the auth_token cookie. */
 export async function logout(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await apiFetch('/api/auth/logout', { method: 'POST' });
 }
