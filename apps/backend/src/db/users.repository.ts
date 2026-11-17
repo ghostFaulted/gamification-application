@@ -38,7 +38,8 @@ export async function bulkInsertStudents(
   rawLogins: readonly string[],
   database: AppDatabase = db,
 ): Promise<BulkInsertStudentsResult> {
-  if (rawLogins.length === 0) {
+  const inputCount = rawLogins.length;
+  if (inputCount === 0) {
     return { createdCount: 0, skippedDuplicatesCount: 0 };
   }
 
@@ -63,7 +64,7 @@ export async function bulkInsertStudents(
 
   return {
     createdCount,
-    skippedDuplicatesCount: rawLogins.length - createdCount,
+    skippedDuplicatesCount: inputCount - createdCount,
   };
 }
 
