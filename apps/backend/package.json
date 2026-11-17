@@ -18,6 +18,7 @@
     "@nestjs/platform-express": "^12.5.0",
     "@nestjs/terminus": "^12.1.0",
     "cookie-parser": "^1.4.7",
+    "csv-parse": "^7.0.3",
     "drizzle-orm": "^0.45.4",
     "jsonwebtoken": "^9.0.3",
     "ldapts": "^9.2.0",
