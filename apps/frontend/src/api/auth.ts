@@ -1,3 +1,5 @@
+import { apiFetch } from './client';
+
 export interface LoginCredentials {
   login: string;
   password: string;
@@ -19,4 +21,9 @@ export async function login({ login, password }: LoginCredentials): Promise<void
   if (password === 'zle') {
     throw new LoginError('Nieprawidłowy login lub hasło.');
   }
+}
+
+/** Ends the session on the server: revokes the token and clears the auth_token cookie. */
+export async function logout(): Promise<void> {
+  await apiFetch('/api/auth/logout', { method: 'POST' });
 }

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { login, LoginError } from '../api/auth';
+import { LoginError } from '../api/auth';
+import { useAuth, type LogoutReason } from '../auth/AuthContext';
 import './LoginPage.css';
 
 interface FieldErrors {
@@ -7,16 +8,19 @@ interface FieldErrors {
   password?: string;
 }
 
-interface LoginPageProps {
-  onSuccess: (login: string) => void;
-}
+const logoutNotices: Record<LogoutReason, string> = {
+  expired: 'Sesja wygasła. Zaloguj się ponownie.',
+  manual: 'Wylogowano pomyślnie.',
+};
 
-export function LoginPage({ onSuccess }: LoginPageProps) {
+export function LoginPage() {
+  const { login, logoutReason } = useAuth();
   const [loginValue, setLoginValue] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [notice, setNotice] = useState(logoutReason ? logoutNotices[logoutReason] : null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function validate(): FieldErrors {
@@ -29,6 +33,7 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
+    setNotice(null);
 
     const errors = validate();
     setFieldErrors(errors);
@@ -37,7 +42,6 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
     setIsSubmitting(true);
     try {
       await login({ login: loginValue.trim(), password });
-      onSuccess(loginValue.trim());
     } catch (error) {
       setFormError(
         error instanceof LoginError
@@ -67,6 +71,12 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
           </div>
         )}
 
+        {notice && (
+          <div className="login__notice" role="status">
+            {notice}
+          </div>
+        )}
+
         <form className="login__form" onSubmit={handleSubmit} noValidate>
           <div className="login__field">
             <label htmlFor="login">Login</label>
@@ -81,6 +91,7 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
                 setLoginValue(e.target.value);
                 setFieldErrors((prev) => ({ ...prev, login: undefined }));
                 setFormError(null);
+                setNotice(null);
               }}
               aria-invalid={Boolean(fieldErrors.login)}
               aria-describedby={fieldErrors.login ? 'login-error' : 'login-hint'}
@@ -111,6 +122,7 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
                   setPassword(e.target.value);
                   setFieldErrors((prev) => ({ ...prev, password: undefined }));
                   setFormError(null);
+                  setNotice(null);
                 }}
                 aria-invalid={Boolean(fieldErrors.password)}
                 aria-describedby={fieldErrors.password ? 'password-error' : undefined}
