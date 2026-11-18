@@ -26,6 +26,11 @@ export interface ApiFetchOptions {
   /** Sent as JSON; a FormData body (file upload) is sent as multipart. */
   body?: unknown;
   signal?: AbortSignal;
+  /**
+   * For calls whose response body is not used (e.g. logout): if reading the body fails,
+   * keep the received status instead of throwing, so the outcome is still known.
+   */
+  ignoreBodyErrors?: boolean;
 }
 
 /**
@@ -34,7 +39,7 @@ export interface ApiFetchOptions {
  */
 export async function apiFetch<T>(
   path: string,
-  { method = 'GET', body, signal }: ApiFetchOptions = {},
+  { method = 'GET', body, signal, ignoreBodyErrors = false }: ApiFetchOptions = {},
 ): Promise<T> {
   const isFormData = body instanceof FormData;
   const headers: Record<string, string> = { Accept: 'application/json' };
@@ -55,7 +60,9 @@ export async function apiFetch<T>(
     throw new ApiError(0, 'Brak połączenia z serwerem. Spróbuj ponownie później.');
   }
 
-  const data = await readBody(response);
+  const data = ignoreBodyErrors
+    ? await readBody(response).catch(() => undefined)
+    : await readBody(response);
   if (response.status === 401) unauthorizedHandler?.(path);
   if (!response.ok) throw new ApiError(response.status, errorMessage(response.status, data), data);
   return data as T;
