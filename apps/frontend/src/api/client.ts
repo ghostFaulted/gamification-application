@@ -11,7 +11,8 @@ export class ApiError extends Error {
   }
 }
 
-type UnauthorizedHandler = () => void;
+/** Receives the path of the request that got the 401, e.g. "/api/auth/logout". */
+type UnauthorizedHandler = (path: string) => void;
 
 let unauthorizedHandler: UnauthorizedHandler | null = null;
 
@@ -55,7 +56,7 @@ export async function apiFetch<T>(
   }
 
   const data = await readBody(response);
-  if (response.status === 401) unauthorizedHandler?.();
+  if (response.status === 401) unauthorizedHandler?.(path);
   if (!response.ok) throw new ApiError(response.status, errorMessage(response.status, data), data);
   return data as T;
 }

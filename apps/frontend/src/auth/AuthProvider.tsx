@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { login as apiLogin, logout as apiLogout, type LoginCredentials } from '../api/auth';
 import { ApiError, setUnauthorizedHandler } from '../api/client';
 import { AuthContext, type AuthContextValue, type LogoutReason } from './AuthContext';
@@ -8,12 +8,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [logoutReason, setLogoutReason] = useState<LogoutReason | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
-  // True while the "Wyloguj" request is running, so its 401 is not treated as an expired session.
-  const manualLogoutInProgress = useRef(false);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     await apiLogin(credentials);
     setLogoutReason(null);
+    // A failed "Wyloguj" may have ended after the session expired; do not show its error now.
+    setLogoutError(null);
     setUser(credentials.login);
   }, []);
 
@@ -22,7 +22,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (reason === 'manual') {
       setIsLoggingOut(true);
       setLogoutError(null);
-      manualLogoutInProgress.current = true;
       try {
         await apiLogout();
       } catch (error) {
@@ -33,7 +32,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
       } finally {
-        manualLogoutInProgress.current = false;
         setIsLoggingOut(false);
       }
     }
@@ -43,10 +41,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // While someone is signed in, any 401 from apiFetch ends the session as expired.
+  // A 401 from the logout request itself is handled by logout() above, so it is skipped here.
   useEffect(() => {
     if (!user) return;
-    setUnauthorizedHandler(() => {
-      if (!manualLogoutInProgress.current) void logout('expired');
+    setUnauthorizedHandler((path) => {
+      if (path !== '/api/auth/logout') void logout('expired');
     });
     return () => setUnauthorizedHandler(null);
   }, [user, logout]);
