@@ -1,7 +1,8 @@
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { useAuth } from './auth/AuthContext';
 import { AuthProvider } from './auth/AuthProvider';
 import { AppLayout } from './components/AppLayout';
+import { ImportPage } from './pages/ImportPage';
 import { LoginPage } from './pages/LoginPage';
 import { RoleHomePage } from './pages/RoleHomePage';
 import { ProtectedRoute, type RedirectState } from './routes/ProtectedRoute';
@@ -25,6 +26,10 @@ export function App() {
               </Route>
               <Route element={<ProtectedRoute roles={['admin']} />}>
                 <Route path="/admin" element={<RoleHomePage role="admin" />} />
+              </Route>
+              {/* POST /api/users/import is allowed only for lecturers and admins (RolesGuard). */}
+              <Route element={<ProtectedRoute roles={['lecturer', 'admin']} />}>
+                <Route path="/import" element={<ImportRoute />} />
               </Route>
             </Route>
           </Route>
@@ -52,4 +57,11 @@ function LoginRoute() {
     return <Navigate to={from ?? ROLE_HOME[user.role]} replace />;
   }
   return <LoginPage />;
+}
+
+/** CSV import view (SCRUM-57); "back" returns to the user's start page. */
+function ImportRoute() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  return <ImportPage onBack={() => void navigate(user ? ROLE_HOME[user.role] : '/')} />;
 }

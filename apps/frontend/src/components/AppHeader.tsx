@@ -2,7 +2,7 @@ import { useAuth } from '../auth/AuthContext';
 import './AppHeader.css';
 
 export function AppHeader() {
-  const { user, isLoggingOut, logout } = useAuth();
+  const { user, isLoggingOut, logoutError, logout } = useAuth();
 
   return (
     <header className="app-header">
@@ -13,6 +13,11 @@ export function AppHeader() {
         <span className="app-header__name">Grywalizacja</span>
       </div>
       <div className="app-header__user">
+        {logoutError && (
+          <span className="app-header__error" role="alert">
+            {logoutError}
+          </span>
+        )}
         <span className="app-header__login" title="Zalogowany użytkownik">
           {user?.login}
         </span>
