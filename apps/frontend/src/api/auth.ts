@@ -25,5 +25,6 @@ export async function login({ login, password }: LoginCredentials): Promise<void
 
 /** Ends the session on the server: revokes the token and clears the auth_token cookie. */
 export async function logout(): Promise<void> {
-  await apiFetch('/api/auth/logout', { method: 'POST' });
+  // Only the status matters: 2xx/401 means the session ended, even if the body is unreadable.
+  await apiFetch('/api/auth/logout', { method: 'POST', ignoreBodyErrors: true });
 }

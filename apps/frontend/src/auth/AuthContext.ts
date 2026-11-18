@@ -9,9 +9,14 @@ export interface AuthContextValue {
   user: string | null;
   logoutReason: LogoutReason | null;
   isLoggingOut: boolean;
+  /** Message shown when the "Wyloguj" request failed and the user is still signed in. */
+  logoutError: string | null;
   /** Throws LoginError when the credentials are rejected. */
   login: (credentials: LoginCredentials) => Promise<void>;
-  /** Always clears the local session, even if the server call fails. */
+  /**
+   * Ends the session. A manual logout clears it only after the server confirms (or answers 401);
+   * on any other failure the user stays signed in and logoutError is set.
+   */
   logout: (reason?: LogoutReason) => Promise<void>;
 }
 

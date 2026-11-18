@@ -46,6 +46,11 @@
   white-space: nowrap;
 }
 
+.app-header__error {
+  font-size: 0.875rem;
+  color: #cb1d1d;
+}
+
 .app-header__logout {
   padding: 0.5rem 0.875rem;
   border: 1px solid #cbd2d9;
