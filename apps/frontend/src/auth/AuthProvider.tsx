@@ -2,19 +2,21 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { login as apiLogin, logout as apiLogout, type LoginCredentials } from '../api/auth';
 import { ApiError, setUnauthorizedHandler } from '../api/client';
 import { AuthContext, type AuthContextValue, type LogoutReason } from './AuthContext';
+import type { AuthUser } from '@gamification/shared';
+import { loadStoredUser, storeUser } from './storage';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<string | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(loadStoredUser);
   const [logoutReason, setLogoutReason] = useState<LogoutReason | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
-    await apiLogin(credentials);
+    const signedIn = await apiLogin(credentials);
     setLogoutReason(null);
     // A failed "Wyloguj" may have ended after the session expired; do not show its error now.
     setLogoutError(null);
-    setUser(credentials.login);
+    setUser(signedIn);
   }, []);
 
   const logout = useCallback(async (reason: LogoutReason = 'manual') => {
@@ -39,6 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLogoutReason(reason);
     setUser(null);
   }, []);
+
+  // Keep the user across page reloads (see storage.ts).
+  useEffect(() => storeUser(user), [user]);
 
   // While someone is signed in, any 401 from apiFetch ends the session as expired.
   // A 401 from the logout request itself is handled by logout() above, so it is skipped here.

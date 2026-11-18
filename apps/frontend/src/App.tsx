@@ -1,61 +1,67 @@
-import { useState } from 'react';
-import { ROLES, type Role } from '@gamification/shared';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { useAuth } from './auth/AuthContext';
 import { AuthProvider } from './auth/AuthProvider';
-import { AppHeader } from './components/AppHeader';
+import { AppLayout } from './components/AppLayout';
 import { ImportPage } from './pages/ImportPage';
 import { LoginPage } from './pages/LoginPage';
-
-const roleLabels: Record<Role, string> = {
-  student: 'Student',
-  lecturer: 'Prowadzący',
-  admin: 'Administrator',
-};
+import { RoleHomePage } from './pages/RoleHomePage';
+import { ProtectedRoute, type RedirectState } from './routes/ProtectedRoute';
+import { IMPORT_ROLES, ROLE_HOME } from './routes/roles';
 
 export function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<LoginRoute />} />
+
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AppLayout />}>
+              <Route index element={<HomeRedirect />} />
+              <Route element={<ProtectedRoute roles={['student']} />}>
+                <Route path="/student" element={<RoleHomePage role="student" />} />
+              </Route>
+              <Route element={<ProtectedRoute roles={['lecturer']} />}>
+                <Route path="/lecturer" element={<RoleHomePage role="lecturer" />} />
+              </Route>
+              <Route element={<ProtectedRoute roles={['admin']} />}>
+                <Route path="/admin" element={<RoleHomePage role="admin" />} />
+              </Route>
+              {/* POST /api/users/import is allowed only for lecturers and admins (RolesGuard). */}
+              <Route element={<ProtectedRoute roles={IMPORT_ROLES} />}>
+                <Route path="/import" element={<ImportRoute />} />
+              </Route>
+            </Route>
+          </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
-function AppContent() {
-  // Bez routera: prosty przełącznik widoku na podstawie stanu zalogowania.
+/** "/" sends a signed-in user to the start page of their role. */
+function HomeRedirect() {
   const { user } = useAuth();
-
-  if (!user) {
-    return <LoginPage />;
-  }
-
-  return <SignedInContent user={user} />;
+  return <Navigate to={user ? ROLE_HOME[user.role] : '/login'} replace />;
 }
 
-function SignedInContent({ user }: { user: string }) {
-  // Bez routera: widok importu CSV do czasu dodania tras.
-  // Po wylogowaniu stan znika razem z komponentem, więc widok wraca do strony głównej.
-  const [view, setView] = useState<'home' | 'import'>('home');
+/** The login form; once signed in, goes back to the page the user wanted or to their start page. */
+function LoginRoute() {
+  const { user } = useAuth();
+  const location = useLocation();
 
-  return (
-    <>
-      <AppHeader />
-      {view === 'import' ? (
-        <ImportPage onBack={() => setView('home')} />
-      ) : (
-        <main className="page">
-          <h1>Grywalizacja</h1>
-          <p>Zalogowano jako {user}.</p>
-          <button type="button" onClick={() => setView('import')}>
-            Import studentów z CSV
-          </button>
-          <h2>Role w systemie</h2>
-          <ul>
-            {ROLES.map((role) => (
-              <li key={role}>{roleLabels[role]}</li>
-            ))}
-          </ul>
-        </main>
-      )}
-    </>
-  );
+  if (user) {
+    const from = (location.state as RedirectState | null)?.from;
+    return <Navigate to={from ?? ROLE_HOME[user.role]} replace />;
+  }
+  return <LoginPage />;
+}
+
+/** CSV import view (SCRUM-57); "back" returns to the user's start page. */
+function ImportRoute() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  return <ImportPage onBack={() => void navigate(user ? ROLE_HOME[user.role] : '/')} />;
 }

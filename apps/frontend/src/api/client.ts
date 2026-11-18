@@ -60,9 +60,12 @@ export async function apiFetch<T>(
     throw new ApiError(0, 'Brak połączenia z serwerem. Spróbuj ponownie później.');
   }
 
-  const data = ignoreBodyErrors
-    ? await readBody(response).catch(() => undefined)
-    : await readBody(response);
+  // For an error status (e.g. a confirmed 401) the status matters more than the body,
+  // so a failed body read must not hide it.
+  const data =
+    ignoreBodyErrors || !response.ok
+      ? await readBody(response).catch(() => undefined)
+      : await readBody(response);
   if (response.status === 401) unauthorizedHandler?.(path);
   if (!response.ok) throw new ApiError(response.status, errorMessage(response.status, data), data);
   return data as T;

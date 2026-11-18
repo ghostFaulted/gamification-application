@@ -19,7 +19,7 @@ export function AppHeader() {
           </span>
         )}
         <span className="app-header__login" title="Zalogowany użytkownik">
-          {user}
+          {user?.login}
         </span>
         <button
           type="button"

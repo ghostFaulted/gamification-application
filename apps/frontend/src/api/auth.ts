@@ -1,4 +1,5 @@
-import { apiFetch } from './client';
+import type { AuthUser, LoginResponse } from '@gamification/shared';
+import { ApiError, apiFetch } from './client';
 
 export interface LoginCredentials {
   login: string;
@@ -8,19 +9,28 @@ export interface LoginCredentials {
 export class LoginError extends Error {}
 
 /**
- * Tymczasowa atrapa logowania - backend /api/auth/login jeszcze nie istnieje.
- * Na potrzeby podglądu: hasło "zle" symuluje błędne dane, login "ldap" - niedostępny serwer.
- * TODO: zastąpić prawdziwym POST /api/auth/login, gdy backend będzie gotowy.
+ * Signs in through LDAP (POST /api/auth/login). The server sets the auth_token cookie
+ * and returns the user with their role. Throws LoginError with a message for the form.
  */
-export async function login({ login, password }: LoginCredentials): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 800));
+export async function login({ login, password }: LoginCredentials): Promise<AuthUser> {
+  try {
+    const { user } = await apiFetch<LoginResponse>('/api/auth/login', {
+      method: 'POST',
+      body: { login, password },
+    });
+    return user;
+  } catch (error) {
+    throw new LoginError(loginErrorMessage(error));
+  }
+}
 
-  if (login.toLowerCase() === 'ldap') {
-    throw new LoginError('Serwer LDAP jest niedostępny. Spróbuj ponownie później.');
+function loginErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return 'Nieprawidłowy login lub hasło.';
+    if (error.status === 503) return 'Serwer LDAP jest niedostępny. Spróbuj ponownie później.';
+    if (error.status === 0) return error.message;
   }
-  if (password === 'zle') {
-    throw new LoginError('Nieprawidłowy login lub hasło.');
-  }
+  return 'Wystąpił nieoczekiwany błąd. Spróbuj ponownie.';
 }
 
 /** Ends the session on the server: revokes the token and clears the auth_token cookie. */
