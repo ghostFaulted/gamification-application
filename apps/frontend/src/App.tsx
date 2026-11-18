@@ -6,7 +6,7 @@ import { ImportPage } from './pages/ImportPage';
 import { LoginPage } from './pages/LoginPage';
 import { RoleHomePage } from './pages/RoleHomePage';
 import { ProtectedRoute, type RedirectState } from './routes/ProtectedRoute';
-import { ROLE_HOME } from './routes/roles';
+import { IMPORT_ROLES, ROLE_HOME } from './routes/roles';
 
 export function App() {
   return (
@@ -28,7 +28,7 @@ export function App() {
                 <Route path="/admin" element={<RoleHomePage role="admin" />} />
               </Route>
               {/* POST /api/users/import is allowed only for lecturers and admins (RolesGuard). */}
-              <Route element={<ProtectedRoute roles={['lecturer', 'admin']} />}>
+              <Route element={<ProtectedRoute roles={IMPORT_ROLES} />}>
                 <Route path="/import" element={<ImportRoute />} />
               </Route>
             </Route>

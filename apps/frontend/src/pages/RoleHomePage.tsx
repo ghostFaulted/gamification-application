@@ -1,7 +1,7 @@
 import type { Role } from '@gamification/shared';
 import { Link } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
-import { ROLE_LABELS } from '../routes/roles';
+import { IMPORT_ROLES, ROLE_LABELS } from '../routes/roles';
 
 const descriptions: Record<Role, string> = {
   student: 'Tu pojawią się Twoje kursy, zadania i punkty.',
@@ -18,7 +18,7 @@ export function RoleHomePage({ role }: { role: Role }) {
       <h1>Panel: {ROLE_LABELS[role]}</h1>
       <p>Zalogowano jako {user?.login}.</p>
       <p>{descriptions[role]}</p>
-      {role !== 'student' && (
+      {IMPORT_ROLES.includes(role) && (
         <p>
           <Link to="/import">Import studentów z CSV</Link>
         </p>
