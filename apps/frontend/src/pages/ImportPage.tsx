@@ -6,7 +6,9 @@ import './ImportPage.css';
 export function ImportPage({ onBack }: { onBack: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Validation errors block the file; a request error still allows retrying the same file.
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [requestError, setRequestError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [report, setReport] = useState<UsersImportReport | null>(null);
 
@@ -14,7 +16,8 @@ export function ImportPage({ onBack }: { onBack: () => void }) {
     if (!selected) return;
     setFile(selected);
     setReport(null);
-    setError(validateCsvFile(selected));
+    setRequestError(null);
+    setValidationError(validateCsvFile(selected));
   }
 
   function handleDrop(event: DragEvent<HTMLLabelElement>) {
@@ -25,14 +28,15 @@ export function ImportPage({ onBack }: { onBack: () => void }) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!file || error) return;
+    if (!file || validationError) return;
 
+    setRequestError(null);
     setIsSubmitting(true);
     try {
       setReport(await importUsers(file));
       setFile(null);
     } catch (caught) {
-      setError(
+      setRequestError(
         caught instanceof ImportError
           ? caught.message
           : 'Wystąpił nieoczekiwany błąd. Spróbuj ponownie.',
@@ -87,16 +91,16 @@ export function ImportPage({ onBack }: { onBack: () => void }) {
             />
           </label>
 
-          {error && (
+          {(validationError ?? requestError) && (
             <div className="import__alert" role="alert">
-              {error}
+              {validationError ?? requestError}
             </div>
           )}
 
           <button
             type="submit"
             className="import__submit"
-            disabled={!file || Boolean(error) || isSubmitting}
+            disabled={!file || Boolean(validationError) || isSubmitting}
           >
             {isSubmitting && <span className="import__spinner" aria-hidden="true" />}
             {isSubmitting ? 'Importowanie…' : 'Importuj'}
