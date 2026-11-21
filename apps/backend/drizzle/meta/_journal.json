@@ -15,6 +15,13 @@
       "when": 1794841454294,
       "tag": "0001_damp_james_howlett",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795269286957,
+      "tag": "0002_plain_joshua_kane",
+      "breakpoints": true
     }
   ]
 }
