@@ -131,6 +131,7 @@ Backend (przykłady):
 ```bash
 pnpm --filter @gamification/backend db:generate
 pnpm --filter @gamification/backend db:migrate
+pnpm --filter @gamification/backend db:seed
 ```
 
 ## Praca z pnpm
