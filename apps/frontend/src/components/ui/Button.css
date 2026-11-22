@@ -1,0 +1,68 @@
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.ui-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-button:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+
+.ui-button--primary {
+  min-height: 48px;
+  /* Figma: 12px 20px; 1px less vertically for the (transparent) border. */
+  padding: 11px var(--space-5);
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+  font: var(--font-label-m);
+}
+
+.ui-button--primary:hover:not(:disabled) {
+  background: var(--color-brand-hover);
+}
+
+.ui-button--secondary {
+  min-height: 38px;
+  /* Figma: 8px 16px including the 1px border. */
+  padding: 7px var(--space-4);
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: var(--font-label-s);
+}
+
+.ui-button--secondary:hover:not(:disabled) {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+.ui-button--loading:disabled {
+  opacity: var(--opacity-loading);
+  cursor: progress;
+}
+
+.ui-button__spinner {
+  flex-shrink: 0;
+  animation: ui-button-spin 0.7s linear infinite;
+}
+
+@keyframes ui-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

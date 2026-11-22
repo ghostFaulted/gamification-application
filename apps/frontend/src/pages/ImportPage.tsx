@@ -1,6 +1,7 @@
 import { useState, type DragEvent, type FormEvent } from 'react';
 import type { UsersImportReport } from '@gamification/shared';
 import { importUsers, ImportError, validateCsvFile } from '../api/users';
+import { Alert, Button } from '../components/ui';
 import './ImportPage.css';
 
 export function ImportPage({ onBack }: { onBack: () => void }) {
@@ -92,19 +93,12 @@ export function ImportPage({ onBack }: { onBack: () => void }) {
           </label>
 
           {(validationError ?? requestError) && (
-            <div className="import__alert" role="alert">
-              {validationError ?? requestError}
-            </div>
+            <Alert type="error">{validationError ?? requestError}</Alert>
           )}
 
-          <button
-            type="submit"
-            className="import__submit"
-            disabled={!file || Boolean(validationError) || isSubmitting}
-          >
-            {isSubmitting && <span className="import__spinner" aria-hidden="true" />}
+          <Button type="submit" disabled={!file || Boolean(validationError)} loading={isSubmitting}>
             {isSubmitting ? 'Importowanie…' : 'Importuj'}
-          </button>
+          </Button>
         </form>
 
         <div aria-live="polite">{report && <ImportSummary report={report} />}</div>
@@ -116,10 +110,10 @@ export function ImportPage({ onBack }: { onBack: () => void }) {
 function ImportSummary({ report }: { report: UsersImportReport }) {
   return (
     <section className="import__summary" aria-label="Podsumowanie importu">
-      <p className="import__notice" role="status">
+      <Alert type="info">
         Import zakończony: utworzono {report.created}, pominięto {report.skippedDuplicates}{' '}
         (duplikaty), błędnych wierszy: {report.invalid}.
-      </p>
+      </Alert>
 
       <LoginTable title="Dodani studenci" logins={report.createdLogins} />
       <LoginTable

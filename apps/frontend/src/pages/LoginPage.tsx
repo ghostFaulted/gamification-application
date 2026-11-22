@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { LoginError } from '../api/auth';
 import { useAuth, type LogoutReason } from '../auth/AuthContext';
+import { Alert, Button, Input } from '../components/ui';
 import './LoginPage.css';
 
 interface FieldErrors {
@@ -66,89 +67,63 @@ export function LoginPage() {
         </header>
 
         {formError && (
-          <div className="login__alert" role="alert">
+          <Alert type="error" className="login__alert">
             {formError}
-          </div>
+          </Alert>
         )}
 
         {notice && (
-          <div className="login__notice" role="status">
+          <Alert type="info" className="login__alert">
             {notice}
-          </div>
+          </Alert>
         )}
 
         <form className="login__form" onSubmit={handleSubmit} noValidate>
-          <div className="login__field">
-            <label htmlFor="login">Login</label>
-            <input
-              id="login"
-              name="login"
-              type="text"
-              autoComplete="username"
-              placeholder="np. s123456"
-              value={loginValue}
-              onChange={(e) => {
-                setLoginValue(e.target.value);
-                setFieldErrors((prev) => ({ ...prev, login: undefined }));
-                setFormError(null);
-                setNotice(null);
-              }}
-              aria-invalid={Boolean(fieldErrors.login)}
-              aria-describedby={fieldErrors.login ? 'login-error' : 'login-hint'}
-              disabled={isSubmitting}
-              autoFocus
-            />
-            {fieldErrors.login ? (
-              <span id="login-error" className="login__error">
-                {fieldErrors.login}
-              </span>
-            ) : (
-              <span id="login-hint" className="login__hint">
-                Ten sam login co w laboratoriach wydziałowych (domena LABS).
-              </span>
-            )}
-          </div>
+          <Input
+            id="login"
+            label="Login"
+            name="login"
+            type="text"
+            autoComplete="username"
+            placeholder="np. s123456"
+            value={loginValue}
+            onChange={(e) => {
+              setLoginValue(e.target.value);
+              setFieldErrors((prev) => ({ ...prev, login: undefined }));
+              setFormError(null);
+              setNotice(null);
+            }}
+            error={fieldErrors.login}
+            hint="Ten sam login co w laboratoriach wydziałowych (domena LABS)."
+            disabled={isSubmitting}
+            autoFocus
+          />
 
-          <div className="login__field">
-            <label htmlFor="password">Hasło</label>
-            <div className="login__password">
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setFieldErrors((prev) => ({ ...prev, password: undefined }));
-                  setFormError(null);
-                  setNotice(null);
-                }}
-                aria-invalid={Boolean(fieldErrors.password)}
-                aria-describedby={fieldErrors.password ? 'password-error' : undefined}
-                disabled={isSubmitting}
-              />
-              <button
-                type="button"
-                className="login__toggle"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Ukryj hasło' : 'Pokaż hasło'}
-                disabled={isSubmitting}
-              >
-                {showPassword ? 'Ukryj' : 'Pokaż'}
-              </button>
-            </div>
-            {fieldErrors.password && (
-              <span id="password-error" className="login__error">
-                {fieldErrors.password}
-              </span>
-            )}
-          </div>
+          <Input
+            id="password"
+            label="Hasło"
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setFieldErrors((prev) => ({ ...prev, password: undefined }));
+              setFormError(null);
+              setNotice(null);
+            }}
+            error={fieldErrors.password}
+            toggle={{
+              label: showPassword ? 'Ukryj' : 'Pokaż',
+              ariaLabel: showPassword ? 'Ukryj hasło' : 'Pokaż hasło',
+              onToggle: () => setShowPassword((v) => !v),
+            }}
+            disabled={isSubmitting}
+          />
 
-          <button type="submit" className="login__submit" disabled={isSubmitting}>
-            {isSubmitting && <span className="login__spinner" aria-hidden="true" />}
+          <Button type="submit" className="login__submit" loading={isSubmitting}>
             {isSubmitting ? 'Logowanie…' : 'Zaloguj się'}
-          </button>
+          </Button>
         </form>
 
         <p className="login__footer">

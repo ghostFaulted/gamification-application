@@ -1,8 +1,8 @@
 :root {
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-family);
   line-height: 1.5;
-  color: #1f2933;
-  background: #f5f7fa;
+  color: var(--color-text);
+  background: var(--color-bg);
 }
 
 body {
@@ -12,5 +12,5 @@ body {
 .page {
   max-width: 40rem;
   margin: 0 auto;
-  padding: 3rem 1.5rem;
+  padding: 3rem var(--space-6);
 }
