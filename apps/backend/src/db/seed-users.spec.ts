@@ -48,9 +48,12 @@ describe('resolveSeedUsers', () => {
     expect(resolved.filter((u) => u.role === 'admin')).toHaveLength(5);
   });
 
-  it('refuses to seed default dev accounts in production without explicit env vars', () => {
-    expect(() => resolveSeedUsers({ NODE_ENV: 'production' })).toThrow(/production/);
-  });
+  it.each([undefined, '', 'production', 'staging', 'test'])(
+    'refuses to seed default dev accounts when NODE_ENV=%j and env vars are unset',
+    (nodeEnv) => {
+      expect(() => resolveSeedUsers({ NODE_ENV: nodeEnv })).toThrow(/NODE_ENV=development/);
+    },
+  );
 
   it('parses explicit SEED_ADMIN_LOGINS and SEED_LECTURER_LOGINS even in production', () => {
     const resolved = resolveSeedUsers({

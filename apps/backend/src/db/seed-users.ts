@@ -62,17 +62,17 @@ function parseEnvLogins(raw: string | undefined): string[] {
 /**
  * Resolves the list of lecturer/admin accounts to seed.
  * - If SEED_ADMIN_LOGINS or SEED_LECTURER_LOGINS is provided, uses only those logins.
- * - Otherwise, falls back to DEFAULT_DEV_SEED_USERS outside production.
- * - Refuses to seed default dev accounts when NODE_ENV=production.
+ * - Otherwise, falls back to DEFAULT_DEV_SEED_USERS only when NODE_ENV=development.
+ * - Fails closed when NODE_ENV is unset or set to any non-development value.
  */
 export function resolveSeedUsers(env: NodeJS.ProcessEnv = process.env): SeedUserInput[] {
   const hasExplicitEnv =
     Boolean(env.SEED_ADMIN_LOGINS?.trim()) || Boolean(env.SEED_LECTURER_LOGINS?.trim());
 
   if (!hasExplicitEnv) {
-    if (env.NODE_ENV === 'production') {
+    if (env.NODE_ENV !== 'development') {
       throw new Error(
-        'Refusing to seed default development accounts in production. Set SEED_ADMIN_LOGINS and/or SEED_LECTURER_LOGINS.',
+        'Refusing to seed default development accounts unless NODE_ENV=development. Set SEED_ADMIN_LOGINS and/or SEED_LECTURER_LOGINS explicitly.',
       );
     }
     return DEFAULT_DEV_SEED_USERS.map((entry) => ({ ...entry }));
