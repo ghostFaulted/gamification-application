@@ -54,6 +54,8 @@ docker compose up --build
 
 Kontener API przy starcie uruchamia migracje Drizzle (`db:migrate`), potem NestJS.
 
+Domyślne konta deweloperskie (`lecturer1`–`lecturer5`, `admin1`–`admin5`) są seedowane **wyłącznie** przy `NODE_ENV=development` (ustawionym w `.env.example`; kto ma starszy `.env`, musi dopisać tę linię). Przy braku `NODE_ENV` lub `NODE_ENV=production` domyślne konta nie są tworzone — w środowisku produkcyjnym należy jawnie podać `SEED_ADMIN_LOGINS` i/lub `SEED_LECTURER_LOGINS`.
+
 Zatrzymanie: `Ctrl+C` albo `docker compose down`. Dane Postgresa i LDAP zostają w volume (`docker compose down -v` usuwa volume).
 
 ### Lokalny OpenLDAP (konta testowe)
@@ -131,6 +133,7 @@ Backend (przykłady):
 ```bash
 pnpm --filter @gamification/backend db:generate
 pnpm --filter @gamification/backend db:migrate
+NODE_ENV=development pnpm --filter @gamification/backend db:seed
 ```
 
 ## Praca z pnpm

@@ -48,6 +48,7 @@ services:
     ports:
       - '${API_PORT}:3000'
     environment:
+      NODE_ENV: ${NODE_ENV:-}
       DATABASE_URL: ${DATABASE_URL}
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET}
