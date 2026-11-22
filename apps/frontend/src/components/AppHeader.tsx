@@ -1,4 +1,5 @@
 import { useAuth } from '../auth/AuthContext';
+import { Button } from './ui';
 import './AppHeader.css';
 
 export function AppHeader() {
@@ -21,14 +22,9 @@ export function AppHeader() {
         <span className="app-header__login" title="Zalogowany użytkownik">
           {user?.login}
         </span>
-        <button
-          type="button"
-          className="app-header__logout"
-          onClick={() => void logout()}
-          disabled={isLoggingOut}
-        >
+        <Button variant="secondary" onClick={() => void logout()} disabled={isLoggingOut}>
           {isLoggingOut ? 'Wylogowywanie…' : 'Wyloguj'}
-        </button>
+        </Button>
       </div>
     </header>
   );

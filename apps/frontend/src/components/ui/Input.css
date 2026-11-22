@@ -1,0 +1,99 @@
+.ui-input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ui-input__label {
+  font: var(--font-label-s);
+  color: var(--color-text);
+}
+
+.ui-input__field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.ui-input__field:focus-within {
+  border-color: var(--color-brand);
+  box-shadow: var(--focus-ring);
+}
+
+/* The design uses a 2px border; the inset shadow adds the 2nd pixel without a layout shift. */
+.ui-input__field--error,
+.ui-input__field--error:focus-within {
+  border-color: var(--color-danger);
+  box-shadow: inset 0 0 0 1px var(--color-danger);
+}
+
+.ui-input__field--error:focus-within {
+  box-shadow:
+    inset 0 0 0 1px var(--color-danger),
+    var(--focus-ring);
+}
+
+.ui-input__control {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 10px var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font: var(--font-body-m);
+}
+
+.ui-input__control:focus {
+  outline: none;
+}
+
+.ui-input__control::placeholder {
+  color: var(--color-text-subtle);
+}
+
+.ui-input__control:disabled {
+  cursor: not-allowed;
+}
+
+.ui-input__field:has(.ui-input__control:disabled) {
+  background: var(--color-bg-subtle);
+}
+
+.ui-input__toggle {
+  flex-shrink: 0;
+  margin-right: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-brand);
+  font: var(--font-label-s);
+  cursor: pointer;
+}
+
+.ui-input__toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-input__toggle:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+
+.ui-input__message {
+  font: var(--font-caption);
+  color: var(--color-text-subtle);
+}
+
+.ui-input__message--error {
+  color: var(--color-danger);
+}
