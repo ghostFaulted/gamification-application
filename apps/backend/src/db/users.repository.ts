@@ -18,6 +18,7 @@ export interface BulkInsertStudentsResult {
 }
 
 const BULK_INSERT_CHUNK_SIZE = 1000;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function normalizeLogin(rawLogin: string): string {
   const normalized = rawLogin.trim().toLowerCase();
@@ -37,6 +38,16 @@ export async function findUserByLogin(
     .from(users)
     .where(eq(sql`lower(${users.login})`, normalized))
     .limit(1);
+
+  return user ?? null;
+}
+
+export async function findUserById(id: string, database: AppDatabase = db): Promise<User | null> {
+  // PostgreSQL rejects a malformed uuid with an error instead of matching nothing.
+  if (!UUID_PATTERN.test(id)) {
+    return null;
+  }
+  const [user] = await database.select().from(users).where(eq(users.id, id)).limit(1);
 
   return user ?? null;
 }
@@ -86,6 +97,7 @@ export async function bulkInsertStudents(
 
 export abstract class UsersRepository {
   abstract findByLogin(login: string): Promise<User | null>;
+  abstract findById(id: string): Promise<User | null>;
   abstract bulkInsertStudents(rawLogins: readonly string[]): Promise<BulkInsertStudentsResult>;
 }
 
@@ -93,6 +105,10 @@ export abstract class UsersRepository {
 export class DrizzleUsersRepository extends UsersRepository {
   async findByLogin(login: string): Promise<User | null> {
     return findUserByLogin(login);
+  }
+
+  async findById(id: string): Promise<User | null> {
+    return findUserById(id);
   }
 
   async bulkInsertStudents(rawLogins: readonly string[]): Promise<BulkInsertStudentsResult> {

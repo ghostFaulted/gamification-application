@@ -54,6 +54,10 @@ class InMemoryUsersRepository extends UsersRepository {
     return this.users.get(login) ?? null;
   }
 
+  async findById(id: string): Promise<User | null> {
+    return [...this.users.values()].find((user) => user.id === id) ?? null;
+  }
+
   async bulkInsertStudents(): Promise<BulkInsertStudentsResult> {
     throw new Error('Not used in these tests');
   }
