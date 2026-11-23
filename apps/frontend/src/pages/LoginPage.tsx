@@ -69,7 +69,7 @@ export function LoginPage() {
         </header>
 
         {formError && (
-          <Alert type="error" className="login__alert">
+          <Alert id="login-form-error" type="error" className="login__alert">
             {formError}
           </Alert>
         )}
@@ -98,6 +98,7 @@ export function LoginPage() {
             }}
             error={fieldErrors.login}
             invalid={credentialsRejected}
+            aria-describedby={credentialsRejected ? 'login-form-error password-error' : undefined}
             disabled={isSubmitting}
             autoFocus
           />

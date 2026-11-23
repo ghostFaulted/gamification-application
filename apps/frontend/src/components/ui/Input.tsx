@@ -31,11 +31,14 @@ export function Input({
   toggle,
   className,
   disabled,
+  'aria-describedby': callerDescribedBy,
   ...rest
 }: InputProps) {
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
-  const describedBy = error ? errorId : hint ? hintId : undefined;
+  const ownDescribedBy = error ? errorId : hint ? hintId : undefined;
+  const describedBy =
+    [ownDescribedBy, callerDescribedBy?.trim()].filter(Boolean).join(' ') || undefined;
 
   return (
     <div className={['ui-input', className].filter(Boolean).join(' ')}>
