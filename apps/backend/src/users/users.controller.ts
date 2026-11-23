@@ -4,13 +4,11 @@ import {
   HttpStatus,
   Post,
   UploadedFile,
-  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { UsersImportReport } from '@gamification/shared';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
+import { Auth } from '../auth/auth.decorator';
 import { UsersRepository } from '../db';
 import { CsvParserService, MAX_CSV_SIZE_BYTES, type UploadedCsvFile } from './csv-parser.service';
 
@@ -24,7 +22,7 @@ export class UsersController {
   @Post('import')
   @HttpCode(HttpStatus.OK)
   // Guards run before the interceptor, so the file is not read for unauthorized users.
-  @UseGuards(JwtAuthGuard, RolesGuard('lecturer', 'admin'))
+  @Auth('lecturer', 'admin')
   // A bigger upload is cut off by multer with 413 instead of being buffered in memory;
   // text fields are not used, so any of them is rejected with 400.
   @UseInterceptors(
