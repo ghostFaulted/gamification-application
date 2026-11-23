@@ -16,6 +16,8 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   hint?: ReactNode;
   /** Error message; marks the field as invalid. */
   error?: string;
+  /** Red border without a message, e.g. a form-level login failure. */
+  invalid?: boolean;
   /** Inline text button inside the field, e.g. show/hide password. */
   toggle?: InputToggle;
 }
@@ -25,6 +27,7 @@ export function Input({
   label,
   hint,
   error,
+  invalid = false,
   toggle,
   className,
   disabled,
@@ -39,13 +42,13 @@ export function Input({
       <label className="ui-input__label" htmlFor={id}>
         {label}
       </label>
-      <div className={`ui-input__field${error ? ' ui-input__field--error' : ''}`}>
+      <div className={`ui-input__field${error || invalid ? ' ui-input__field--error' : ''}`}>
         <input
           {...rest}
           id={id}
           className="ui-input__control"
           disabled={disabled}
-          aria-invalid={Boolean(error)}
+          aria-invalid={Boolean(error) || invalid}
           aria-describedby={describedBy}
         />
         {toggle && (

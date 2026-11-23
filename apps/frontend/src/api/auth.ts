@@ -6,7 +6,15 @@ export interface LoginCredentials {
   password: string;
 }
 
-export class LoginError extends Error {}
+export class LoginError extends Error {
+  readonly status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = 'LoginError';
+    this.status = status;
+  }
+}
 
 /**
  * Signs in through LDAP (POST /api/auth/login). The server sets the auth_token cookie
@@ -20,7 +28,10 @@ export async function login({ login, password }: LoginCredentials): Promise<Auth
     });
     return user;
   } catch (error) {
-    throw new LoginError(loginErrorMessage(error));
+    throw new LoginError(
+      loginErrorMessage(error),
+      error instanceof ApiError ? error.status : undefined,
+    );
   }
 }
 

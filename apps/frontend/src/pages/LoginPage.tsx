@@ -21,6 +21,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [credentialsRejected, setCredentialsRejected] = useState(false);
   const [notice, setNotice] = useState(logoutReason ? logoutNotices[logoutReason] : null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -34,6 +35,7 @@ export function LoginPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
+    setCredentialsRejected(false);
     setNotice(null);
 
     const errors = validate();
@@ -49,7 +51,7 @@ export function LoginPage() {
           ? error.message
           : 'Wystąpił nieoczekiwany błąd. Spróbuj ponownie.',
       );
-      setPassword('');
+      setCredentialsRejected(error instanceof LoginError && error.status === 401);
     } finally {
       setIsSubmitting(false);
     }
@@ -91,10 +93,11 @@ export function LoginPage() {
               setLoginValue(e.target.value);
               setFieldErrors((prev) => ({ ...prev, login: undefined }));
               setFormError(null);
+              setCredentialsRejected(false);
               setNotice(null);
             }}
             error={fieldErrors.login}
-            hint="Ten sam login co w laboratoriach wydziałowych (domena LABS)."
+            invalid={credentialsRejected}
             disabled={isSubmitting}
             autoFocus
           />
@@ -110,9 +113,15 @@ export function LoginPage() {
               setPassword(e.target.value);
               setFieldErrors((prev) => ({ ...prev, password: undefined }));
               setFormError(null);
+              setCredentialsRejected(false);
               setNotice(null);
             }}
-            error={fieldErrors.password}
+            error={
+              fieldErrors.password ??
+              (credentialsRejected
+                ? 'Sprawdź login i hasło do konta LABS i spróbuj ponownie.'
+                : undefined)
+            }
             toggle={{
               label: showPassword ? 'Ukryj' : 'Pokaż',
               ariaLabel: showPassword ? 'Ukryj hasło' : 'Pokaż hasło',
@@ -127,7 +136,9 @@ export function LoginPage() {
         </form>
 
         <p className="login__footer">
-          Problem z logowaniem? Skontaktuj się z administratorem sieci WMiI.
+          Problem z logowaniem?
+          <br />
+          Skontaktuj się z administratorem
         </p>
       </div>
     </div>

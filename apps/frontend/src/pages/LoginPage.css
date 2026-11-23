@@ -5,12 +5,12 @@
   justify-content: center;
   padding: var(--space-6);
   box-sizing: border-box;
-  background: linear-gradient(135deg, var(--color-brand-soft) 0%, var(--color-bg) 60%);
+  background: var(--color-bg);
 }
 
 .login__card {
   width: 100%;
-  max-width: 24rem;
+  max-width: 25rem;
   background: var(--color-surface);
   border-radius: var(--radius-xl);
   padding: var(--space-8);
@@ -27,11 +27,10 @@
   width: 3.5rem;
   height: 3.5rem;
   margin: 0 auto var(--space-3);
-  border-radius: 0.875rem;
+  border-radius: var(--radius-lg);
   background: var(--color-brand);
   color: var(--color-on-brand);
-  font-size: 1.75rem;
-  font-weight: var(--font-weight-bold);
+  font: var(--font-h2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -40,6 +39,7 @@
 .login__title {
   margin: 0;
   font: var(--font-h2);
+  color: var(--color-text);
 }
 
 .login__subtitle {
@@ -59,6 +59,7 @@
 }
 
 .login__submit {
+  width: 100%;
   margin-top: var(--space-2);
 }
 
@@ -73,12 +74,17 @@
   .login {
     padding: 0;
     align-items: stretch;
+    background: var(--color-surface);
   }
 
   .login__card {
     max-width: none;
+    min-height: 100vh;
     border-radius: 0;
     box-shadow: none;
-    padding: 2.5rem var(--space-6);
+    padding: var(--space-8) var(--space-6);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 }
