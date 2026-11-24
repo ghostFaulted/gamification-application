@@ -1,5 +1,7 @@
 import type { Role } from '@gamification/shared';
+import { classifyImportedStudents, prepareImportLogins } from './group-students-import';
 import { GroupNotFoundError, importGroupStudents } from './groups.repository';
+
 import { groups, users } from './schema/index.js';
 import type { AppDatabase } from './users.repository';
 
@@ -177,5 +179,62 @@ describe('importGroupStudents', () => {
     await expect(importGroupStudents(GROUP_ID, ['s1', '  '], fakeDb)).rejects.toThrow(
       'Login must not be empty',
     );
+  });
+});
+
+describe('prepareImportLogins', () => {
+  it('normalizes, de-duplicates and counts repeats, in first-seen order', () => {
+    expect(prepareImportLogins(['s2', ' S1 ', 's2', 's1'])).toEqual({
+      uniqueLogins: ['s2', 's1'],
+      duplicatesCount: 2,
+    });
+  });
+
+  it('returns an empty result for no logins', () => {
+    expect(prepareImportLogins([])).toEqual({ uniqueLogins: [], duplicatesCount: 0 });
+  });
+
+  it('rejects an empty login', () => {
+    expect(() => prepareImportLogins(['s1', '  '])).toThrow('Login must not be empty');
+  });
+});
+
+describe('classifyImportedStudents', () => {
+  it('splits unique logins by role, new membership and created accounts, in file order', () => {
+    const accounts = new Map([
+      ['s1', { id: 'id-s1', role: 'student' as const }],
+      ['s2', { id: 'id-s2', role: 'student' as const }],
+      ['s3', { id: 'id-s3', role: 'student' as const }],
+      ['lecturer1', { id: 'id-lecturer1', role: 'lecturer' as const }],
+      ['admin1', { id: 'id-admin1', role: 'admin' as const }],
+    ]);
+
+    expect(
+      classifyImportedStudents({
+        uniqueLogins: ['s1', 's2', 's3', 'lecturer1', 'admin1'],
+        accounts,
+        created: new Set(['s1']),
+        added: new Set(['id-s1', 'id-s2']),
+        duplicatesCount: 1,
+      }),
+    ).toEqual({
+      addedLogins: ['s1', 's2'],
+      createdLogins: ['s1'],
+      alreadyInGroupLogins: ['s3'],
+      notStudentLogins: ['lecturer1', 'admin1'],
+      duplicatesCount: 1,
+    });
+  });
+
+  it('throws when a prepared login has no account', () => {
+    expect(() =>
+      classifyImportedStudents({
+        uniqueLogins: ['s1'],
+        accounts: new Map(),
+        created: new Set(),
+        added: new Set(),
+        duplicatesCount: 0,
+      }),
+    ).toThrow('Imported login "s1" was not found after insert');
   });
 });

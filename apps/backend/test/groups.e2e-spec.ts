@@ -21,6 +21,8 @@ import {
   type ImportGroupStudentsResult,
   type UpdateGroupData,
   type UserSummary,
+  classifyImportedStudents,
+  prepareImportLogins,
 } from '../src/db';
 import { setupApp } from '../src/setup-app';
 
@@ -202,44 +204,36 @@ class InMemoryGroupsRepository extends GroupsRepository {
       throw new GroupNotFoundError();
     }
 
-    const normalizedLogins = rawLogins.map((login) => login.trim().toLowerCase());
-    if (normalizedLogins.some((login) => login.length === 0)) {
-      throw new Error('Login must not be empty');
-    }
-
-    const uniqueLogins = [...new Set(normalizedLogins)];
+    const { uniqueLogins, duplicatesCount } = prepareImportLogins(rawLogins);
     const members = this.students.get(groupId) ?? [];
     const memberIds = new Set(members.map((student) => student.id));
-    const result: ImportGroupStudentsResult = {
-      addedLogins: [],
-      createdLogins: [],
-      alreadyInGroupLogins: [],
-      notStudentLogins: [],
-      duplicatesCount: normalizedLogins.length - uniqueLogins.length,
-    };
+    const accounts = new Map<string, { id: string; role: UserSummary['role'] }>();
+    const created = new Set<string>();
+    const added = new Set<string>();
 
     for (const login of uniqueLogins) {
       let account = [...this.users.values()].find((user) => user.login.toLowerCase() === login);
       if (!account) {
         account = { id: randomUUID(), login, role: 'student' };
         this.users.set(account.id, account);
-        result.createdLogins.push(login);
+        created.add(login);
       }
-      if (account.role !== 'student') {
-        result.notStudentLogins.push(login);
-        continue;
+      accounts.set(login, { id: account.id, role: account.role });
+      if (account.role === 'student' && !memberIds.has(account.id)) {
+        members.push({ id: account.id, login: account.login, assignedAt: new Date() });
+        memberIds.add(account.id);
+        added.add(account.id);
       }
-      if (memberIds.has(account.id)) {
-        result.alreadyInGroupLogins.push(login);
-        continue;
-      }
-      members.push({ id: account.id, login: account.login, assignedAt: new Date() });
-      memberIds.add(account.id);
-      result.addedLogins.push(login);
     }
 
     this.students.set(groupId, members);
-    return result;
+    return classifyImportedStudents({
+      uniqueLogins,
+      accounts,
+      created,
+      added,
+      duplicatesCount,
+    });
   }
 
   private hydrateGroup(raw: {
