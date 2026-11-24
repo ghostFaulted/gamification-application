@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type { Role } from '@gamification/shared';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from './client.js';
 import { courses, groups, groupStudents, users, type Course } from './schema/index.js';
+import type { AppDatabase } from './users.repository.js';
 
 export type CourseRecord = Course;
 
@@ -53,6 +54,24 @@ export interface UserSummary {
   role: Role;
 }
 
+/** Unique normalized logins of an import, split by outcome; every list keeps the input order. */
+export interface ImportGroupStudentsResult {
+  addedLogins: string[];
+  /** Accounts created by this import; a subset of `addedLogins`. */
+  createdLogins: string[];
+  alreadyInGroupLogins: string[];
+  notStudentLogins: string[];
+  /** Extra occurrences of logins repeated in the input. */
+  duplicatesCount: number;
+}
+
+export class GroupNotFoundError extends Error {
+  constructor() {
+    super('Group not found');
+    this.name = 'GroupNotFoundError';
+  }
+}
+
 export class DuplicateCourseCodeError extends Error {
   constructor() {
     super('A course with this code already exists');
@@ -96,6 +115,114 @@ function extractPgError(error: unknown): { code?: string; constraint?: string } 
   return {};
 }
 
+const IMPORT_CHUNK_SIZE = 1000;
+
+function chunks<T>(items: readonly T[]): T[][] {
+  const result: T[][] = [];
+  for (let offset = 0; offset < items.length; offset += IMPORT_CHUNK_SIZE) {
+    result.push(items.slice(offset, offset + IMPORT_CHUNK_SIZE));
+  }
+  return result;
+}
+
+/**
+ * Adds students to a group in one transaction: creates missing student accounts, then links
+ * every student login to the group. Lecturer/admin accounts are reported, never linked.
+ * Only adds; students missing from the input stay in the group.
+ */
+export async function importGroupStudents(
+  groupId: string,
+  rawLogins: readonly string[],
+  database: AppDatabase = db,
+): Promise<ImportGroupStudentsResult> {
+  const normalizedLogins = rawLogins.map((login) => login.trim().toLowerCase());
+  if (normalizedLogins.some((login) => login.length === 0)) {
+    throw new Error('Login must not be empty');
+  }
+  const uniqueLogins = Array.from(new Set(normalizedLogins));
+  // Rows are written in sorted order, not file order: concurrent imports of overlapping logins
+  // then wait on each other in the same order instead of deadlocking (40P01).
+  const sortedLogins = [...uniqueLogins].sort();
+
+  return database.transaction(async (tx) => {
+    // FOR SHARE keeps the group from being deleted until the import commits.
+    const [group] = await tx
+      .select({ id: groups.id })
+      .from(groups)
+      .where(eq(groups.id, groupId))
+      .for('share');
+    if (!group) {
+      throw new GroupNotFoundError();
+    }
+
+    const created = new Set<string>();
+    const accounts = new Map<string, { id: string; role: Role }>();
+    const added = new Set<string>();
+
+    for (const chunk of chunks(sortedLogins)) {
+      const inserted = await tx
+        .insert(users)
+        .values(chunk.map((login) => ({ login, role: 'student' as const })))
+        .onConflictDoNothing()
+        .returning({ login: users.login });
+      for (const row of inserted) {
+        created.add(row.login);
+      }
+
+      const rows = await tx
+        .select({ id: users.id, login: users.login, role: users.role })
+        .from(users)
+        .where(inArray(sql`lower(${users.login})`, chunk));
+      for (const row of rows) {
+        accounts.set(row.login.toLowerCase(), { id: row.id, role: row.role });
+      }
+    }
+
+    const studentIds = uniqueLogins
+      .flatMap((login) => {
+        const account = accounts.get(login);
+        return account?.role === 'student' ? [account.id] : [];
+      })
+      .sort();
+
+    for (const chunk of chunks(studentIds)) {
+      const linked = await tx
+        .insert(groupStudents)
+        .values(chunk.map((studentId) => ({ groupId, studentId })))
+        .onConflictDoNothing()
+        .returning({ studentId: groupStudents.studentId });
+      for (const row of linked) {
+        added.add(row.studentId);
+      }
+    }
+
+    const result: ImportGroupStudentsResult = {
+      addedLogins: [],
+      createdLogins: [],
+      alreadyInGroupLogins: [],
+      notStudentLogins: [],
+      duplicatesCount: normalizedLogins.length - uniqueLogins.length,
+    };
+    for (const login of uniqueLogins) {
+      const account = accounts.get(login);
+      if (!account) {
+        throw new Error(`Imported login "${login}" was not found after insert`);
+      }
+      if (account.role !== 'student') {
+        result.notStudentLogins.push(login);
+      } else if (added.has(account.id)) {
+        result.addedLogins.push(login);
+        if (created.has(login)) {
+          result.createdLogins.push(login);
+        }
+      } else {
+        result.alreadyInGroupLogins.push(login);
+      }
+    }
+    return result;
+  });
+}
+
 export abstract class GroupsRepository {
   abstract findUserById(id: string): Promise<UserSummary | null>;
   abstract findCourses(): Promise<CourseRecord[]>;
@@ -106,6 +233,10 @@ export abstract class GroupsRepository {
   abstract createGroup(data: CreateGroupData): Promise<GroupRecord>;
   abstract updateGroup(id: string, data: UpdateGroupData): Promise<GroupRecord | null>;
   abstract deleteGroup(id: string): Promise<boolean>;
+  abstract importStudents(
+    groupId: string,
+    logins: readonly string[],
+  ): Promise<ImportGroupStudentsResult>;
 }
 
 @Injectable()
@@ -279,5 +410,12 @@ export class DrizzleGroupsRepository extends GroupsRepository {
   async deleteGroup(id: string): Promise<boolean> {
     const rows = await db.delete(groups).where(eq(groups.id, id)).returning({ id: groups.id });
     return rows.length > 0;
+  }
+
+  async importStudents(
+    groupId: string,
+    logins: readonly string[],
+  ): Promise<ImportGroupStudentsResult> {
+    return importGroupStudents(groupId, logins);
   }
 }

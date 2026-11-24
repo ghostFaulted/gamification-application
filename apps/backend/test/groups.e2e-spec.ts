@@ -16,6 +16,7 @@ import {
   type CreateGroupData,
   type FindGroupsFilter,
   type GroupRecord,
+  type ImportGroupStudentsResult,
   type UpdateGroupData,
   type UserSummary,
 } from '../src/db';
@@ -179,6 +180,10 @@ class InMemoryGroupsRepository extends GroupsRepository {
 
   async deleteGroup(id: string): Promise<boolean> {
     return this.groups.delete(id);
+  }
+
+  async importStudents(): Promise<ImportGroupStudentsResult> {
+    throw new Error('Not used in these tests');
   }
 
   private hydrateGroup(raw: {

@@ -1,3 +1,5 @@
+import type { UsersImportRowError } from './users-import.js';
+
 export interface CourseDto {
   id: string;
   name: string;
@@ -42,4 +44,24 @@ export interface UpdateGroupRequest {
   name?: string;
   semester?: string | null;
   description?: string | null;
+}
+
+/** Response body of POST /api/groups/:id/students/import. Logins are lowercased, in file order. */
+export interface GroupStudentsImportReport {
+  /** Students added to the group by this import. */
+  added: number;
+  addedLogins: string[];
+  /** Student accounts created by this import (all of them are also in `addedLogins`). */
+  createdAccounts: number;
+  createdLogins: string[];
+  /** Students that were already in the group; nothing changed for them. */
+  alreadyInGroup: number;
+  alreadyInGroupLogins: string[];
+  /** Lecturer or admin accounts listed in the file; they are never added as students. */
+  notStudentLogins: string[];
+  /** Extra occurrences of a login repeated in the file. */
+  duplicatesInFile: number;
+  /** Rows rejected by validation, listed in `errors`. */
+  invalid: number;
+  errors: UsersImportRowError[];
 }

@@ -17,6 +17,7 @@ import {
   type CreateGroupData,
   type FindGroupsFilter,
   type GroupRecord,
+  type ImportGroupStudentsResult,
   type UpdateGroupData,
   type User,
   type UserSummary,
@@ -203,6 +204,19 @@ class FakeGroupsRepository extends GroupsRepository {
   async deleteGroup(id: string): Promise<boolean> {
     return this.groups.delete(id);
   }
+
+  async importStudents(
+    _groupId: string,
+    rawLogins: readonly string[],
+  ): Promise<ImportGroupStudentsResult> {
+    return {
+      addedLogins: [...rawLogins],
+      createdLogins: [],
+      alreadyInGroupLogins: [],
+      notStudentLogins: [],
+      duplicatesCount: 0,
+    };
+  }
 }
 
 interface RouteCase {
@@ -277,6 +291,14 @@ const ROUTES: RouteCase[] = [
     send: (r) => r.delete(`/api/groups/${GROUP_ID}`),
     expected: { ...STAFF_ONLY, lecturer: 204, admin: 204 },
   },
+  {
+    route: 'POST /api/groups/:id/students/import',
+    send: (r) =>
+      r
+        .post(`/api/groups/${GROUP_ID}/students/import`)
+        .attach('file', Buffer.from('login\ns1\n'), 'g.csv'),
+    expected: { ...STAFF_ONLY, lecturer: 200, admin: 200 },
+  },
 ];
 
 /** Routes acting on GROUP_ID: another lecturer must get 403, not the group. */
@@ -284,6 +306,7 @@ const OWNED_GROUP_ROUTES = [
   'GET /api/groups/:id',
   'PATCH /api/groups/:id',
   'DELETE /api/groups/:id',
+  'POST /api/groups/:id/students/import',
 ];
 
 interface ExpressLayer {
