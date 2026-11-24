@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import type { GroupDto } from '@gamification/shared';
+import type { GroupDto, GroupStudentsImportReport } from '@gamification/shared';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../api/client';
-import { groupMeta, studentCountLabel, toGroupLoadError } from './groupDetails';
+import { groupMeta, importSummary, studentCountLabel, toGroupLoadError } from './groupDetails';
 
 const group: GroupDto = {
   id: '6f1c2b8e-3d4a-4c5b-9e6f-7a8b9c0d1e2f',
@@ -70,5 +70,38 @@ describe('studentCountLabel', () => {
     expect(studentCountLabel(0)).toBe('0 studentów');
     expect(studentCountLabel(1)).toBe('1 student');
     expect(studentCountLabel(28)).toBe('28 studentów');
+  });
+});
+
+describe('importSummary', () => {
+  const empty: GroupStudentsImportReport = {
+    added: 0,
+    addedLogins: [],
+    createdAccounts: 0,
+    createdLogins: [],
+    alreadyInGroup: 0,
+    alreadyInGroupLogins: [],
+    notStudentLogins: [],
+    duplicatesInFile: 0,
+    invalid: 0,
+    errors: [],
+  };
+
+  it('matches the Figma toast for a plain import', () => {
+    expect(importSummary({ ...empty, added: 6 })).toBe('Zaimportowano 6 studentów.');
+    expect(importSummary({ ...empty, added: 1 })).toBe('Zaimportowano 1 studenta.');
+  });
+
+  it('lists what was skipped', () => {
+    expect(
+      importSummary({
+        ...empty,
+        alreadyInGroup: 3,
+        notStudentLogins: ['lecturer2'],
+        invalid: 2,
+      }),
+    ).toBe(
+      'Nie dodano nowych studentów. Już w grupie: 3. Pominięte konta prowadzących: 1. Błędne wiersze: 2.',
+    );
   });
 });

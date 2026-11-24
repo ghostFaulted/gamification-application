@@ -1,4 +1,4 @@
-import type { GroupDto } from '@gamification/shared';
+import type { GroupDto, GroupStudentsImportReport } from '@gamification/shared';
 import { ApiError } from '../api/client';
 
 const GROUP_LOAD_FAILED = 'Nie udało się pobrać danych grupy. Spróbuj ponownie.';
@@ -31,4 +31,22 @@ export function groupMeta(group: GroupDto): string {
 
 export function studentCountLabel(count: number): string {
   return `${count} ${count === 1 ? 'student' : 'studentów'}`;
+}
+
+/**
+ * Toast text after a group import, e.g. "Zaimportowano 6 studentów." plus what was skipped:
+ * students already in the group, staff accounts and rejected rows.
+ */
+export function importSummary(report: GroupStudentsImportReport): string {
+  const parts = [
+    report.added > 0
+      ? `Zaimportowano ${report.added} ${report.added === 1 ? 'studenta' : 'studentów'}.`
+      : 'Nie dodano nowych studentów.',
+  ];
+  if (report.alreadyInGroup > 0) parts.push(`Już w grupie: ${report.alreadyInGroup}.`);
+  if (report.notStudentLogins.length > 0) {
+    parts.push(`Pominięte konta prowadzących: ${report.notStudentLogins.length}.`);
+  }
+  if (report.invalid > 0) parts.push(`Błędne wiersze: ${report.invalid}.`);
+  return parts.join(' ');
 }

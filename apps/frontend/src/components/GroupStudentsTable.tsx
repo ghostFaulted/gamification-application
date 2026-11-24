@@ -1,16 +1,8 @@
+import type { GroupStudentDto } from '@gamification/shared';
 import './GroupStudentsTable.css';
 
-/**
- * One student of a group as shown in the table (Figma "06 Grupa po imporcie": Lp., Login,
- * Status). The API does not return group members yet; see GroupDetailsPage.
- */
-export interface GroupStudentRow {
-  login: string;
-  /** ISO timestamp of adding the student to the group. */
-  assignedAt: string;
-}
-
-export function GroupStudentsTable({ students }: { students: readonly GroupStudentRow[] }) {
+/** Students of a group (Figma "06 Grupa po imporcie": Lp., Login, Status). */
+export function GroupStudentsTable({ students }: { students: readonly GroupStudentDto[] }) {
   return (
     <div className="students-table__wrap">
       <table className="students-table">
@@ -25,7 +17,7 @@ export function GroupStudentsTable({ students }: { students: readonly GroupStude
         </thead>
         <tbody>
           {students.map((student, index) => (
-            <tr key={student.login}>
+            <tr key={student.id}>
               <td className="students-table__index">{index + 1}</td>
               <td className="students-table__login">{student.login}</td>
               <td className="students-table__status">Dodany {formatDate(student.assignedAt)}</td>

@@ -27,15 +27,34 @@
   text-decoration: underline;
 }
 
-.group-view__breadcrumb-link:focus-visible,
-.group-view__back:focus-visible {
+.group-view__breadcrumb-link:focus-visible {
   outline: none;
   border-radius: var(--radius-md);
   box-shadow: var(--focus-ring);
 }
 
 .group-view__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
   margin-top: calc(-1 * var(--space-2));
+}
+
+/* Opened by the "Import studentów z CSV" button. */
+.group-view__file {
+  display: none;
+}
+
+/* Figma: success toast in the top-right corner, under the app header. */
+.group-view__toast {
+  position: fixed;
+  top: 76px;
+  right: var(--space-6);
+  z-index: 10;
+  max-width: min(26rem, calc(100vw - 2 * var(--space-6)));
+  box-shadow: var(--shadow-card);
 }
 
 .group-view__title {
@@ -112,10 +131,6 @@
   color: var(--color-text-muted);
 }
 
-.group-view__back {
-  text-decoration: none;
-}
-
 .group-view__panel {
   overflow: hidden;
   border: 1px solid var(--color-divider);
@@ -151,21 +166,6 @@
   max-width: 28rem;
   font: var(--font-body-s);
   color: var(--color-text-muted);
-}
-
-.group-view__pending {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  padding: var(--space-4) var(--space-3);
-  border-top: 1px solid var(--color-divider);
-  font: var(--font-body-s);
-  color: var(--color-text-muted);
-}
-
-.group-view__pending-icon {
-  flex-shrink: 0;
 }
 
 @media (max-width: 480px) {

@@ -11,12 +11,12 @@ import { useAuth } from './auth/AuthContext';
 import { AuthProvider } from './auth/AuthProvider';
 import { SessionGate } from './auth/SessionGate';
 import { AppLayout } from './components/AppLayout';
+import { GroupDetailsPage } from './pages/GroupDetailsPage';
 import { GroupFormPlaceholder } from './pages/GroupFormPlaceholder';
 import { ImportPage } from './pages/ImportPage';
 import { LecturerGroupsPage } from './pages/LecturerGroupsPage';
 import { LoginPage } from './pages/LoginPage';
 import { RoleHomePage } from './pages/RoleHomePage';
-import { GroupDetailsPage } from './pages/GroupDetailsPage';
 import { ProtectedRoute, type RedirectState } from './routes/ProtectedRoute';
 import { GROUP_VIEW_ROLES, IMPORT_ROLES, ROLE_HOME } from './routes/roles';
 

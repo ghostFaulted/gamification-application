@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { GroupDto } from '@gamification/shared';
+import { Link } from 'react-router';
 import { ApiError } from '../api/client';
 import { fetchGroups } from '../api/groups';
 import { Alert, Button, ButtonLink } from '../components/ui';
 import { SpinnerIcon, UsersIcon } from '../components/ui/icons';
-import { GROUP_NEW_PATH, groupEditPath } from '../routes/roles';
+import { GROUP_NEW_PATH, groupEditPath, groupPath } from '../routes/roles';
 import './LecturerGroupsPage.css';
 
 type LoadState =
@@ -111,7 +112,11 @@ function GroupCard({ group }: { group: GroupDto }) {
   return (
     <article className="group-card">
       <div className="group-card__top">
-        <h2 className="group-card__name">{group.name}</h2>
+        <h2 className="group-card__name">
+          <Link to={groupPath(group.id)} className="group-card__link">
+            {group.name}
+          </Link>
+        </h2>
         <ButtonLink
           to={groupEditPath(group.id)}
           variant="secondary"
