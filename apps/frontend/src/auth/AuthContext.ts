@@ -5,9 +5,20 @@ import type { LoginCredentials } from '../api/auth';
 /** Why the last session ended: the user clicked "Wyloguj" or the API answered 401. */
 export type LogoutReason = 'manual' | 'expired';
 
+/**
+ * State of the session check (GET /api/auth/me) run when the app starts:
+ * checking -> ready (user known or nobody signed in), or error (server unreachable/failed).
+ */
+export type SessionStatus = 'checking' | 'ready' | 'error';
+
 export interface AuthContextValue {
   /** The signed-in user (login and role), or null when nobody is signed in. */
   user: AuthUser | null;
+  sessionStatus: SessionStatus;
+  /** Message shown when the start-up session check failed for a reason other than 401. */
+  sessionError: string | null;
+  /** Runs the start-up session check again (after sessionStatus === 'error'). */
+  retrySessionCheck: () => void;
   logoutReason: LogoutReason | null;
   isLoggingOut: boolean;
   /** Message shown when the "Wyloguj" request failed and the user is still signed in. */

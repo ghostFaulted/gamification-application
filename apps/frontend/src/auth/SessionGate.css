@@ -1,0 +1,56 @@
+.session-gate {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  box-sizing: border-box;
+}
+
+.session-gate__loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: var(--font-body-s);
+  color: var(--color-text-muted);
+  /* Shown only if the check takes a moment, so a fast answer does not flash the loader. */
+  opacity: 0;
+  animation: session-gate-appear 0.2s ease-out 0.3s forwards;
+}
+
+.session-gate__spinner {
+  color: var(--color-brand);
+  animation: session-gate-spin 0.7s linear infinite;
+}
+
+.session-gate__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 24rem;
+  padding: var(--space-8);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  box-sizing: border-box;
+}
+
+@keyframes session-gate-appear {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes session-gate-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-gate__spinner {
+    animation: none;
+  }
+}
