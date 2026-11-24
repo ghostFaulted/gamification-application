@@ -4,6 +4,7 @@ import { AuthProvider } from './auth/AuthProvider';
 import { SessionGate } from './auth/SessionGate';
 import { AppLayout } from './components/AppLayout';
 import { GroupFormPlaceholder } from './pages/GroupFormPlaceholder';
+import { GroupImportPage } from './pages/GroupImportPage';
 import { ImportPage } from './pages/ImportPage';
 import { LecturerGroupsPage } from './pages/LecturerGroupsPage';
 import { LoginPage } from './pages/LoginPage';
@@ -35,6 +36,7 @@ export function App() {
                     path="/lecturer/groups/:groupId/edit"
                     element={<GroupFormPlaceholder mode="edit" />}
                   />
+                  <Route path="/lecturer/groups/:groupId/import" element={<GroupImportPage />} />
                 </Route>
                 <Route element={<ProtectedRoute roles={['admin']} />}>
                   <Route path="/admin" element={<RoleHomePage role="admin" />} />

@@ -17,6 +17,11 @@ export function groupEditPath(groupId: string): string {
   return `/lecturer/groups/${encodeURIComponent(groupId)}/edit`;
 }
 
+/** CSV import into one group (POST /api/groups/:id/students/import, SCRUM-75). */
+export function groupImportPath(groupId: string): string {
+  return `/lecturer/groups/${encodeURIComponent(groupId)}/import`;
+}
+
 export const ROLE_LABELS: Record<Role, string> = {
   student: 'Student',
   lecturer: 'Prowadzący',
