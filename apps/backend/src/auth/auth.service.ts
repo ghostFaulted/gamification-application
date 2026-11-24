@@ -49,6 +49,15 @@ export class AuthService {
     return { token, user: { login: user.login, role: user.role } };
   }
 
+  /**
+   * Current data of the token owner. The database is the source of truth, so a deleted
+   * account or a changed role takes effect before the token expires.
+   */
+  async findSessionUser(userId: string): Promise<AuthUser | null> {
+    const user = await this.users.findById(userId);
+    return user ? { login: user.login, role: user.role } : null;
+  }
+
   private async authenticateWithLdap(login: string, password: string): Promise<LdapUser> {
     try {
       return await this.ldap.authenticate(login, password);

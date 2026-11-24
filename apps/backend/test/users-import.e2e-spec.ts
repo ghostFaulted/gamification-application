@@ -26,6 +26,10 @@ class FakeUsersRepository extends UsersRepository {
     return null;
   }
 
+  async findById(): Promise<null> {
+    return null;
+  }
+
   /** Logins already "in the database". */
   existingLogins = new Set<string>();
 

@@ -1,4 +1,9 @@
-import { bulkInsertStudents, findUserByLogin, type AppDatabase } from './users.repository';
+import {
+  bulkInsertStudents,
+  findUserById,
+  findUserByLogin,
+  type AppDatabase,
+} from './users.repository';
 
 function createFakeDb(existingLogins: Set<string>) {
   const insertedCalls: Array<Array<{ login: string; role: string }>> = [];
@@ -109,5 +114,47 @@ describe('users.repository', () => {
     const { fakeDb } = createFakeDb(new Set());
 
     await expect(findUserByLogin('  ', fakeDb)).rejects.toThrow('Login must not be empty');
+  });
+
+  describe('findUserById', () => {
+    const user = {
+      id: '11111111-1111-1111-1111-111111111111',
+      login: 's111111',
+      role: 'student',
+      createdAt: new Date(),
+    };
+
+    function createSelectDb(rows: unknown[]) {
+      const select = jest.fn(() => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => rows,
+          }),
+        }),
+      }));
+      return { fakeDb: { select } as unknown as AppDatabase, select };
+    }
+
+    it('returns the user for a matching uuid', async () => {
+      const { fakeDb } = createSelectDb([user]);
+
+      await expect(findUserById(user.id, fakeDb)).resolves.toEqual(user);
+    });
+
+    it('returns null when no user matches', async () => {
+      const { fakeDb } = createSelectDb([]);
+
+      await expect(findUserById(user.id, fakeDb)).resolves.toBeNull();
+    });
+
+    it.each(['', 'not-a-uuid', `${user.id}' OR '1'='1`, `${user.id}0`])(
+      'returns null for malformed id %p without querying the database',
+      async (id) => {
+        const { fakeDb, select } = createSelectDb([user]);
+
+        await expect(findUserById(id, fakeDb)).resolves.toBeNull();
+        expect(select).not.toHaveBeenCalled();
+      },
+    );
   });
 });

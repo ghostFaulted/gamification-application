@@ -13,3 +13,8 @@ export interface AuthUser {
 export interface LoginResponse {
   user: AuthUser;
 }
+
+/** Response body of GET /api/auth/me. */
+export interface MeResponse {
+  user: AuthUser;
+}

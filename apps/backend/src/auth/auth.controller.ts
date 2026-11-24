@@ -1,15 +1,18 @@
 import {
   BadRequestException,
   Controller,
+  Get,
   Header,
   HttpCode,
   HttpStatus,
   Post,
   Req,
   Res,
+  UnauthorizedException,
   UnsupportedMediaTypeException,
+  UseGuards,
 } from '@nestjs/common';
-import type { LoginRequest, LoginResponse } from '@gamification/shared';
+import type { LoginRequest, LoginResponse, MeResponse } from '@gamification/shared';
 import type { Request, Response } from 'express';
 import {
   AUTH_COOKIE_NAME,
@@ -17,6 +20,7 @@ import {
   getClearAuthCookieOptions,
 } from './auth.constants';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard, type AuthenticatedRequest } from './jwt-auth.guard';
 import { TokenService } from './token.service';
 
 function readAuthCookie(req: Request): string | undefined {
@@ -57,6 +61,22 @@ export class AuthController {
     }
 
     res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions());
+    return { user };
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @Header('Cache-Control', 'no-store')
+  async me(
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<MeResponse> {
+    const user = req.user ? await this.authService.findSessionUser(req.user.sub) : null;
+    if (!user) {
+      res.clearCookie(AUTH_COOKIE_NAME, getClearAuthCookieOptions());
+      throw new UnauthorizedException('Session is no longer valid');
+    }
+
     return { user };
   }
 
