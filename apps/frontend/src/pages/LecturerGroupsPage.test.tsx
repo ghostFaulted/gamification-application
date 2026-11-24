@@ -122,7 +122,9 @@ describe('LecturerGroupsPage', () => {
     });
     renderPage();
 
-    expect((await screen.findByRole('alert')).textContent).toBe('Internal server error');
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Nie udało się pobrać listy grup. Spróbuj ponownie.',
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }));
 
     expect(await screen.findByRole('heading', { level: 2, name: emptyGroup.name })).toBeTruthy();

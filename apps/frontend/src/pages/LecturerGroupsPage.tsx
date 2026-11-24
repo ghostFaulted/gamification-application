@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { GroupDto } from '@gamification/shared';
 import { Link } from 'react-router';
-import { ApiError } from '../api/client';
+import { userFacingApiError } from '../api/client';
 import { fetchGroups } from '../api/groups';
 import { Alert, Button, ButtonLink } from '../components/ui';
 import { SpinnerIcon, UsersIcon } from '../components/ui/icons';
@@ -27,10 +27,7 @@ export function LecturerGroupsPage() {
         if (controller.signal.aborted) return;
         setState({
           status: 'error',
-          message:
-            error instanceof ApiError
-              ? error.message
-              : 'Nie udało się pobrać listy grup. Spróbuj ponownie.',
+          message: userFacingApiError(error, 'Nie udało się pobrać listy grup. Spróbuj ponownie.'),
         });
       });
     return () => controller.abort();

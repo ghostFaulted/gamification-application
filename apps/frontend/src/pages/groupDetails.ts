@@ -1,5 +1,5 @@
 import type { GroupDto, GroupStudentsImportReport } from '@gamification/shared';
-import { ApiError } from '../api/client';
+import { ApiError, userFacingApiError } from '../api/client';
 
 const GROUP_LOAD_FAILED = 'Nie udało się pobrać danych grupy. Spróbuj ponownie.';
 
@@ -15,10 +15,8 @@ export function toGroupLoadError(error: unknown): GroupLoadError {
   if (error instanceof ApiError) {
     if (error.status === 404 || error.status === 400) return { kind: 'not-found' };
     if (error.status === 403) return { kind: 'forbidden' };
-    // 5xx messages from the server are English internals; status 0 already has a Polish one.
-    if (error.status < 500) return { kind: 'failed', message: error.message };
   }
-  return { kind: 'failed', message: GROUP_LOAD_FAILED };
+  return { kind: 'failed', message: userFacingApiError(error, GROUP_LOAD_FAILED) };
 }
 
 /**

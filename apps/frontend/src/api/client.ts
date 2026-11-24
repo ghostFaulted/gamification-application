@@ -11,6 +11,17 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Message shown for a failed load: 5xx hides English server text behind `fallback`.
+ * Client errors (and status 0, already in Polish) keep their existing message.
+ */
+export function userFacingApiError(error: unknown, fallback: string): string {
+  if (error instanceof ApiError && error.status < 500) {
+    return error.message;
+  }
+  return fallback;
+}
+
 /** Receives the path of the request that got the 401, e.g. "/api/auth/logout". */
 type UnauthorizedHandler = (path: string) => void;
 
