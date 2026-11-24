@@ -5,7 +5,7 @@ import { ApiError } from '../api/client';
 import { fetchGroups } from '../api/groups';
 import { Alert, Button, ButtonLink } from '../components/ui';
 import { SpinnerIcon, UsersIcon } from '../components/ui/icons';
-import { GROUP_NEW_PATH, groupEditPath, groupPath } from '../routes/roles';
+import { GROUP_NEW_PATH, groupEditPath, groupImportPath, groupPath } from '../routes/roles';
 import './LecturerGroupsPage.css';
 
 type LoadState =
@@ -138,7 +138,16 @@ function GroupCard({ group }: { group: GroupDto }) {
         <div className="group-card__empty">
           <UsersIcon className="group-card__icon" />
           <p className="group-card__empty-title">Brak studentów w grupie</p>
-          <p className="group-card__empty-text">Do tej grupy nie przypisano jeszcze studentów.</p>
+          <p className="group-card__empty-text">
+            Zaimportuj listę uczestników z pliku CSV pobranego z USOS.
+          </p>
+          <ButtonLink
+            to={groupImportPath(group.id)}
+            variant="secondary"
+            aria-label={`Import studentów z CSV do grupy ${group.name}`}
+          >
+            Import studentów z CSV
+          </ButtonLink>
         </div>
       )}
     </article>

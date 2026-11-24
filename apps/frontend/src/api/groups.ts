@@ -1,4 +1,11 @@
-import type { GroupDto, GroupStudentDto, GroupStudentsImportReport } from '@gamification/shared';
+import type {
+  CourseDto,
+  CreateGroupRequest,
+  GroupDto,
+  GroupStudentDto,
+  GroupStudentsImportReport,
+  UpdateGroupRequest,
+} from '@gamification/shared';
 import { ApiError, apiFetch } from './client';
 import { ImportError, translateImportMessage } from './users';
 
@@ -10,28 +17,56 @@ export function fetchGroups(signal?: AbortSignal): Promise<GroupDto[]> {
   return apiFetch<GroupDto[]>('/api/groups', { signal });
 }
 
-/**
- * One group with its course and student count (GET /api/groups/:id). A lecturer may read only
- * their own groups, an admin any group. Throws ApiError: 400 (malformed id), 403 (someone
- * else's group), 404 (no such group).
- */
-export function fetchGroup(id: string, signal?: AbortSignal): Promise<GroupDto> {
-  return apiFetch<GroupDto>(`/api/groups/${encodeURIComponent(id)}`, { signal });
+/** One group (GET /api/groups/:id); 403 for someone else's group, 404 for a missing one. */
+export function fetchGroup(groupId: string, signal?: AbortSignal): Promise<GroupDto> {
+  return apiFetch<GroupDto>(`/api/groups/${encodeURIComponent(groupId)}`, { signal });
 }
 
 /** Students of a group (GET /api/groups/:id/students); same access rules as fetchGroup. */
-export function fetchGroupStudents(id: string, signal?: AbortSignal): Promise<GroupStudentDto[]> {
-  return apiFetch<GroupStudentDto[]>(`/api/groups/${encodeURIComponent(id)}/students`, {
+export function fetchGroupStudents(
+  groupId: string,
+  signal?: AbortSignal,
+): Promise<GroupStudentDto[]> {
+  return apiFetch<GroupStudentDto[]>(`/api/groups/${encodeURIComponent(groupId)}/students`, {
     signal,
   });
 }
 
+/** Courses to choose from when creating a group (GET /api/courses). */
+export function fetchCourses(signal?: AbortSignal): Promise<CourseDto[]> {
+  return apiFetch<CourseDto[]>('/api/courses', { signal });
+}
+
+/** POST /api/groups; a lecturer always becomes the owner. 409 = name already used in the course. */
+export function createGroup(body: CreateGroupRequest): Promise<GroupDto> {
+  return apiFetch<GroupDto>('/api/groups', { method: 'POST', body });
+}
+
+/** PATCH /api/groups/:id; the course cannot be changed. 409 = name already used in the course. */
+export function updateGroup(groupId: string, body: UpdateGroupRequest): Promise<GroupDto> {
+  return apiFetch<GroupDto>(`/api/groups/${encodeURIComponent(groupId)}`, {
+    method: 'PATCH',
+    body,
+  });
+}
+
+/** Polish message for a failed request about a single group (403/404/400 for a bad id). */
+export function groupErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 403) return 'Nie masz dostępu do tej grupy.';
+    if (error.status === 404) return 'Grupa nie istnieje lub została usunięta.';
+    if (error.status === 400 && /\bid\b/i.test(error.message)) return 'Nieprawidłowy adres grupy.';
+    return translateImportMessage(error.message);
+  }
+  return 'Wystąpił nieoczekiwany błąd. Spróbuj ponownie.';
+}
+
 /**
- * Adds the students from a CSV file to a group (POST /api/groups/:id/students/import).
- * Throws ImportError with a Polish message; a 401 is handled by apiFetch (session expired).
+ * Sends the file to POST /api/groups/:id/students/import (SCRUM-75): creates missing student
+ * accounts and adds them to the group. Throws ImportError with a Polish message.
  */
 export async function importGroupStudents(
-  id: string,
+  groupId: string,
   file: File,
 ): Promise<GroupStudentsImportReport> {
   const body = new FormData();
@@ -39,7 +74,7 @@ export async function importGroupStudents(
 
   try {
     const report = await apiFetch<GroupStudentsImportReport>(
-      `/api/groups/${encodeURIComponent(id)}/students/import`,
+      `/api/groups/${encodeURIComponent(groupId)}/students/import`,
       { method: 'POST', body },
     );
     return {
@@ -47,11 +82,7 @@ export async function importGroupStudents(
       errors: report.errors.map((e) => ({ ...e, reason: translateImportMessage(e.reason) })),
     };
   } catch (error) {
-    if (error instanceof ApiError) {
-      if (error.status === 404) throw new ImportError('Ta grupa już nie istnieje.');
-      if (error.status === 403) throw new ImportError('Brak uprawnień do importu do tej grupy.');
-      throw new ImportError(translateImportMessage(error.message));
-    }
+    if (error instanceof ApiError) throw new ImportError(groupErrorMessage(error));
     throw error;
   }
 }
