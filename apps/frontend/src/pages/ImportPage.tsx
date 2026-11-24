@@ -1,5 +1,6 @@
 import { useState, type DragEvent, type FormEvent } from 'react';
-import type { UsersImportReport } from '@gamification/shared';
+import type { GroupStudentsImportReport, UsersImportReport } from '@gamification/shared';
+import { importGroupStudents } from '../api/groups';
 import { importUsers, ImportError, validateCsvFile } from '../api/users';
 import { Alert, Button } from '../components/ui';
 import {
@@ -28,14 +29,26 @@ function formatDataRows(count: number): string {
   return `${count} wierszy z danymi`;
 }
 
-export function ImportPage({ onBack }: { onBack: () => void }) {
+type ImportReport = UsersImportReport | GroupStudentsImportReport;
+
+function isGroupReport(report: ImportReport): report is GroupStudentsImportReport {
+  return 'addedLogins' in report;
+}
+
+export interface ImportPageProps {
+  onBack: () => void;
+  /** Import into this group (POST /api/groups/:id/students/import) instead of the general one. */
+  group?: { id: string; name: string };
+}
+
+export function ImportPage({ onBack, group }: ImportPageProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   // Validation errors block the file; a request error still allows retrying the same file.
   const [validationError, setValidationError] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [report, setReport] = useState<UsersImportReport | null>(null);
+  const [report, setReport] = useState<ImportReport | null>(null);
   const [importedName, setImportedName] = useState<string | null>(null);
 
   function selectFile(selected: File | undefined) {
@@ -75,7 +88,7 @@ export function ImportPage({ onBack }: { onBack: () => void }) {
     setRequestError(null);
     setIsSubmitting(true);
     try {
-      const result = await importUsers(file);
+      const result = group ? await importGroupStudents(group.id, file) : await importUsers(file);
       setImportedName(file.name);
       setReport(result);
       setFile(null);
@@ -93,12 +106,22 @@ export function ImportPage({ onBack }: { onBack: () => void }) {
   if (report && importedName) {
     return (
       <main className="import import--summary">
-        <ImportSummary
-          fileName={importedName}
-          report={report}
-          onAnother={resetForAnotherFile}
-          onBack={onBack}
-        />
+        {isGroupReport(report) ? (
+          <GroupImportSummary
+            fileName={importedName}
+            groupName={group?.name ?? ''}
+            report={report}
+            onAnother={resetForAnotherFile}
+            onBack={onBack}
+          />
+        ) : (
+          <ImportSummary
+            fileName={importedName}
+            report={report}
+            onAnother={resetForAnotherFile}
+            onBack={onBack}
+          />
+        )}
       </main>
     );
   }
@@ -121,7 +144,9 @@ export function ImportPage({ onBack }: { onBack: () => void }) {
   return (
     <main className="import">
       <div className="import__card">
-        <h1 className="import__title">Import studentów z pliku CSV</h1>
+        <h1 className="import__title">
+          {group ? `Import studentów do grupy ${group.name}` : 'Import studentów z pliku CSV'}
+        </h1>
         <h2 className="import__requirements-title">Wymagania dotyczące pliku</h2>
         <ul className="import__requirements">
           <li>format .csv, maksymalnie 5 MB,</li>
@@ -274,34 +299,7 @@ function ImportSummary({
           title="Pominięci – już w bazie lub powtórzeni w pliku"
           logins={report.skippedLogins}
         />
-        {report.errors.length > 0 && (
-          <details className="import__panel import__details" open>
-            <summary className="import__details-summary">
-              <span>Błędne wiersze ({report.errors.length})</span>
-              <ChevronDownIcon className="import__details-chevron" />
-            </summary>
-            <div className="import__table-wrap">
-              <table className="import__table">
-                <thead>
-                  <tr>
-                    <th scope="col">Wiersz</th>
-                    <th scope="col">Wartość</th>
-                    <th scope="col">Powód</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report.errors.map((rowError) => (
-                    <tr key={rowError.row}>
-                      <td>{rowError.row}</td>
-                      <td>{rowError.value || '–'}</td>
-                      <td>{rowError.reason}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </details>
-        )}
+        <RowErrors errors={report.errors} />
       </div>
 
       <div className="import__actions">
@@ -313,6 +311,106 @@ function ImportSummary({
         </Button>
       </div>
     </section>
+  );
+}
+
+function GroupImportSummary({
+  fileName,
+  groupName,
+  report,
+  onAnother,
+  onBack,
+}: {
+  fileName: string;
+  groupName: string;
+  report: GroupStudentsImportReport;
+  onAnother: () => void;
+  onBack: () => void;
+}) {
+  const dataRows =
+    report.added +
+    report.alreadyInGroup +
+    report.notStudentLogins.length +
+    report.duplicatesInFile +
+    report.invalid;
+
+  return (
+    <section className="import__summary" aria-label="Podsumowanie importu" aria-live="polite">
+      <header>
+        <h1 className="import__title">Podsumowanie importu do grupy {groupName}</h1>
+        <p className="import__summary-meta">
+          Plik {fileName} · {formatDataRows(dataRows)} · nowe konta: {report.createdAccounts}
+        </p>
+      </header>
+
+      <dl className="import__stats">
+        <div className="import__stat">
+          <dt>Dodano do grupy</dt>
+          <dd className="import__stat-value import__stat-value--success">{report.added}</dd>
+        </div>
+        <div className="import__stat">
+          <dt>Już w grupie</dt>
+          <dd className="import__stat-value">{report.alreadyInGroup}</dd>
+        </div>
+        <div className="import__stat">
+          <dt>Błędne wiersze</dt>
+          <dd className="import__stat-value import__stat-value--danger">{report.invalid}</dd>
+        </div>
+      </dl>
+
+      <div className="import__tables">
+        <LoginTable title="Dodani do grupy" logins={report.addedLogins} numbered />
+        <LoginTable title="Już byli w grupie" logins={report.alreadyInGroupLogins} />
+        {report.notStudentLogins.length > 0 && (
+          <LoginTable
+            title="Pominięci – konta prowadzących lub administratorów"
+            logins={report.notStudentLogins}
+          />
+        )}
+        <RowErrors errors={report.errors} />
+      </div>
+
+      <div className="import__actions">
+        <Button type="button" variant="secondary" onClick={onAnother}>
+          Importuj kolejny plik
+        </Button>
+        <Button type="button" onClick={onBack}>
+          Wróć do listy grup
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function RowErrors({ errors }: { errors: UsersImportReport['errors'] }) {
+  if (errors.length === 0) return null;
+  return (
+    <details className="import__panel import__details" open>
+      <summary className="import__details-summary">
+        <span>Błędne wiersze ({errors.length})</span>
+        <ChevronDownIcon className="import__details-chevron" />
+      </summary>
+      <div className="import__table-wrap">
+        <table className="import__table">
+          <thead>
+            <tr>
+              <th scope="col">Wiersz</th>
+              <th scope="col">Wartość</th>
+              <th scope="col">Powód</th>
+            </tr>
+          </thead>
+          <tbody>
+            {errors.map((rowError) => (
+              <tr key={rowError.row}>
+                <td>{rowError.row}</td>
+                <td>{rowError.value || '–'}</td>
+                <td>{rowError.reason}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }
 
