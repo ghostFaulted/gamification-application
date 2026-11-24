@@ -60,8 +60,10 @@ export async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser> 
     });
     return user;
   } catch (error) {
-    // A timeout is reported like a lost connection; a caller's abort (e.g. unmount) is not.
-    if (timeout.aborted && !signal?.aborted) {
+    // An ApiError means the server answered (e.g. 401 = no session) or the connection failed,
+    // so it is kept even if the timeout fired meanwhile, e.g. while the body was being read.
+    // Only an abort by the timeout becomes "not responding"; a caller's abort is rethrown.
+    if (!(error instanceof ApiError) && timeout.aborted && !signal?.aborted) {
       throw new ApiError(0, 'Serwer nie odpowiada. Spróbuj ponownie.');
     }
     throw error;
