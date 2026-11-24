@@ -16,7 +16,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { GroupDto, GroupStudentsImportReport } from '@gamification/shared';
+import type { GroupDto, GroupStudentDto, GroupStudentsImportReport } from '@gamification/shared';
 import { Auth } from '../auth/auth.decorator';
 import type { AuthenticatedRequest } from '../auth/jwt-auth.guard';
 import { MAX_CSV_SIZE_BYTES, type UploadedCsvFile } from '../users/csv-parser.service';
@@ -50,6 +50,15 @@ export class GroupsController {
   getGroup(@Req() req: AuthenticatedRequest, @Param('id') rawId: string): Promise<GroupDto> {
     const id = parseUuid(rawId, 'id');
     return this.groupsService.getGroup(requireUser(req), id);
+  }
+
+  @Get(':id/students')
+  listGroupStudents(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') rawId: string,
+  ): Promise<GroupStudentDto[]> {
+    const id = parseUuid(rawId, 'id');
+    return this.groupsService.listGroupStudents(requireUser(req), id);
   }
 
   @Post()

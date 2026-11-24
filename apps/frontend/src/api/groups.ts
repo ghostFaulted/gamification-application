@@ -2,6 +2,7 @@ import type {
   CourseDto,
   CreateGroupRequest,
   GroupDto,
+  GroupStudentDto,
   GroupStudentsImportReport,
   UpdateGroupRequest,
 } from '@gamification/shared';
@@ -19,6 +20,16 @@ export function fetchGroups(signal?: AbortSignal): Promise<GroupDto[]> {
 /** One group (GET /api/groups/:id); 403 for someone else's group, 404 for a missing one. */
 export function fetchGroup(groupId: string, signal?: AbortSignal): Promise<GroupDto> {
   return apiFetch<GroupDto>(`/api/groups/${encodeURIComponent(groupId)}`, { signal });
+}
+
+/** Students of a group (GET /api/groups/:id/students); same access rules as fetchGroup. */
+export function fetchGroupStudents(
+  groupId: string,
+  signal?: AbortSignal,
+): Promise<GroupStudentDto[]> {
+  return apiFetch<GroupStudentDto[]>(`/api/groups/${encodeURIComponent(groupId)}/students`, {
+    signal,
+  });
 }
 
 /** Courses to choose from when creating a group (GET /api/courses). */

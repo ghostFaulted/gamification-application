@@ -54,6 +54,12 @@ export interface UserSummary {
   role: Role;
 }
 
+export interface GroupStudentRecord {
+  id: string;
+  login: string;
+  assignedAt: Date;
+}
+
 /** Unique normalized logins of an import, split by outcome; every list keeps the input order. */
 export interface ImportGroupStudentsResult {
   addedLogins: string[];
@@ -223,6 +229,26 @@ export async function importGroupStudents(
   });
 }
 
+/**
+ * Students of a group, oldest assignment first (one import shares the timestamp, so then by
+ * login). Returns an empty list for a group without students or a missing group.
+ */
+export async function findGroupStudents(
+  groupId: string,
+  database: AppDatabase = db,
+): Promise<GroupStudentRecord[]> {
+  return database
+    .select({
+      id: users.id,
+      login: users.login,
+      assignedAt: groupStudents.assignedAt,
+    })
+    .from(groupStudents)
+    .innerJoin(users, eq(groupStudents.studentId, users.id))
+    .where(eq(groupStudents.groupId, groupId))
+    .orderBy(asc(groupStudents.assignedAt), asc(users.login));
+}
+
 export abstract class GroupsRepository {
   abstract findUserById(id: string): Promise<UserSummary | null>;
   abstract findCourses(): Promise<CourseRecord[]>;
@@ -233,6 +259,7 @@ export abstract class GroupsRepository {
   abstract createGroup(data: CreateGroupData): Promise<GroupRecord>;
   abstract updateGroup(id: string, data: UpdateGroupData): Promise<GroupRecord | null>;
   abstract deleteGroup(id: string): Promise<boolean>;
+  abstract findGroupStudents(groupId: string): Promise<GroupStudentRecord[]>;
   abstract importStudents(
     groupId: string,
     logins: readonly string[],
@@ -410,6 +437,10 @@ export class DrizzleGroupsRepository extends GroupsRepository {
   async deleteGroup(id: string): Promise<boolean> {
     const rows = await db.delete(groups).where(eq(groups.id, id)).returning({ id: groups.id });
     return rows.length > 0;
+  }
+
+  async findGroupStudents(groupId: string): Promise<GroupStudentRecord[]> {
+    return findGroupStudents(groupId);
   }
 
   async importStudents(

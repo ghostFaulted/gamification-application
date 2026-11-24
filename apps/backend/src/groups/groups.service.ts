@@ -5,7 +5,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { CourseDto, GroupDto, GroupStudentsImportReport } from '@gamification/shared';
+import type {
+  CourseDto,
+  GroupDto,
+  GroupStudentDto,
+  GroupStudentsImportReport,
+} from '@gamification/shared';
 import type { AuthUserPayload } from '../auth/token.service';
 import {
   DuplicateCourseCodeError,
@@ -94,6 +99,16 @@ export class GroupsService {
   async getGroup(actor: AuthUserPayload, groupId: string): Promise<GroupDto> {
     const group = await this.findOwnedOrAdminGroup(actor, groupId);
     return toGroupDto(group);
+  }
+
+  async listGroupStudents(actor: AuthUserPayload, groupId: string): Promise<GroupStudentDto[]> {
+    await this.findOwnedOrAdminGroup(actor, groupId);
+    const records = await this.repository.findGroupStudents(groupId);
+    return records.map((record) => ({
+      id: record.id,
+      login: record.login,
+      assignedAt: record.assignedAt.toISOString(),
+    }));
   }
 
   async createGroup(actor: AuthUserPayload, input: ValidatedCreateGroupInput): Promise<GroupDto> {
