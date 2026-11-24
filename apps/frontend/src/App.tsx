@@ -1,4 +1,12 @@
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router';
 import { useAuth } from './auth/AuthContext';
 import { AuthProvider } from './auth/AuthProvider';
 import { SessionGate } from './auth/SessionGate';
@@ -8,8 +16,9 @@ import { ImportPage } from './pages/ImportPage';
 import { LecturerGroupsPage } from './pages/LecturerGroupsPage';
 import { LoginPage } from './pages/LoginPage';
 import { RoleHomePage } from './pages/RoleHomePage';
+import { GroupDetailsPage } from './pages/GroupDetailsPage';
 import { ProtectedRoute, type RedirectState } from './routes/ProtectedRoute';
-import { IMPORT_ROLES, ROLE_HOME } from './routes/roles';
+import { GROUP_VIEW_ROLES, IMPORT_ROLES, ROLE_HOME } from './routes/roles';
 
 export function App() {
   return (
@@ -42,6 +51,10 @@ export function App() {
                 {/* POST /api/users/import is allowed only for lecturers and admins (RolesGuard). */}
                 <Route element={<ProtectedRoute roles={IMPORT_ROLES} />}>
                   <Route path="/import" element={<ImportRoute />} />
+                </Route>
+                {/* GET /api/groups/:id is allowed only for lecturers and admins. */}
+                <Route element={<ProtectedRoute roles={GROUP_VIEW_ROLES} />}>
+                  <Route path="/groups/:id" element={<GroupDetailsRoute />} />
                 </Route>
               </Route>
             </Route>
@@ -77,4 +90,10 @@ function ImportRoute() {
   const { user } = useAuth();
   const navigate = useNavigate();
   return <ImportPage onBack={() => void navigate(user ? ROLE_HOME[user.role] : '/')} />;
+}
+
+/** Group view (SCRUM-78); a new id starts from a fresh page state instead of the previous group. */
+function GroupDetailsRoute() {
+  const { id = '' } = useParams();
+  return <GroupDetailsPage key={id} groupId={id} />;
 }

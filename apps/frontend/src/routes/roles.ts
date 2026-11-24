@@ -22,3 +22,11 @@ export const ROLE_LABELS: Record<Role, string> = {
   lecturer: 'Prowadzący',
   admin: 'Administrator',
 };
+
+/** Roles allowed to open a group's details (same as @Auth on GET /api/groups/:id). */
+export const GROUP_VIEW_ROLES: readonly Role[] = ['lecturer', 'admin'];
+
+/** Path of the group view (SCRUM-78), e.g. for a link from the group list. */
+export function groupPath(groupId: string): string {
+  return `/groups/${encodeURIComponent(groupId)}`;
+}
