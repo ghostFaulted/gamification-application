@@ -1,4 +1,10 @@
-import type { GroupDto, GroupStudentsImportReport } from '@gamification/shared';
+import type {
+  CourseDto,
+  CreateGroupRequest,
+  GroupDto,
+  GroupStudentsImportReport,
+  UpdateGroupRequest,
+} from '@gamification/shared';
 import { ApiError, apiFetch } from './client';
 import { ImportError, translateImportMessage } from './users';
 
@@ -13,6 +19,24 @@ export function fetchGroups(signal?: AbortSignal): Promise<GroupDto[]> {
 /** One group (GET /api/groups/:id); 403 for someone else's group, 404 for a missing one. */
 export function fetchGroup(groupId: string, signal?: AbortSignal): Promise<GroupDto> {
   return apiFetch<GroupDto>(`/api/groups/${encodeURIComponent(groupId)}`, { signal });
+}
+
+/** Courses to choose from when creating a group (GET /api/courses). */
+export function fetchCourses(signal?: AbortSignal): Promise<CourseDto[]> {
+  return apiFetch<CourseDto[]>('/api/courses', { signal });
+}
+
+/** POST /api/groups; a lecturer always becomes the owner. 409 = name already used in the course. */
+export function createGroup(body: CreateGroupRequest): Promise<GroupDto> {
+  return apiFetch<GroupDto>('/api/groups', { method: 'POST', body });
+}
+
+/** PATCH /api/groups/:id; the course cannot be changed. 409 = name already used in the course. */
+export function updateGroup(groupId: string, body: UpdateGroupRequest): Promise<GroupDto> {
+  return apiFetch<GroupDto>(`/api/groups/${encodeURIComponent(groupId)}`, {
+    method: 'PATCH',
+    body,
+  });
 }
 
 /** Polish message for a failed request about a single group (403/404/400 for a bad id). */
