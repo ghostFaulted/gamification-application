@@ -11,6 +11,7 @@
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter @gamification/backend test && pnpm --filter @gamification/frontend test",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
