@@ -8,6 +8,7 @@ Krótki smoke test panelu prowadzącego (Figma: ekrany 02–06). Środowisko: `d
 - [ ] Stan pusty: komunikat „Nie masz jeszcze żadnych grup” i przycisk „Utwórz pierwszą grupę”.
 - [ ] „Nowa grupa” otwiera formularz tworzenia.
 - [ ] Po utworzeniu grupy karta pokazuje nazwę, przedmiot (i kod, jeśli jest), semestr i opis.
+- [ ] Kliknięcie nazwy grupy otwiera widok grupy (`/groups/:id`).
 - [ ] Pusta grupa ma wezwanie „Brak studentów w grupie” i przycisk importu do tej grupy (`/lecturer/groups/:id/import`).
 - [ ] „Edytuj” otwiera formularz edycji tej grupy.
 - [ ] Prowadzący A nie widzi grup prowadzącego B.
@@ -33,11 +34,9 @@ Krótki smoke test panelu prowadzącego (Figma: ekrany 02–06). Środowisko: `d
 - [ ] Błędny plik (brak kolumny `login`, złe rozszerzenie, pusty plik): błąd walidacji, bez zmian w grupie.
 - [ ] Po udanym imporcie lista pokazuje liczbę studentów na karcie grupy.
 
-## 06. Widok grupy po imporcie (SCRUM-78, PR #29)
+## 06. Widok grupy po imporcie (`/groups/:id`, SCRUM-78)
 
-Na `main` nie ma jeszcze osobnego widoku grupy (`/groups/:id`). Po scaleniu PR #29:
-
-- [ ] Z karty grupy można wejść w widok grupy.
+- [ ] Z karty (nazwa grupy) można wejść w widok grupy.
 - [ ] Nagłówek: nazwa, przedmiot, semestr, liczba studentów.
 - [ ] Po imporcie lista studentów jest zgodna z raportem (ekran 06).
 - [ ] Stan pusty, 404 i 403 mają czytelne komunikaty.
