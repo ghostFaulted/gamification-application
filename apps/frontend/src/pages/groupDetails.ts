@@ -36,7 +36,7 @@ export function studentCountLabel(count: number): string {
 
 /**
  * Toast text after a group import, e.g. "Zaimportowano 6 studentów." plus what was skipped:
- * students already in the group, staff accounts, logins repeated in the file and rejected rows.
+ * students already in the group, staff accounts (lecturers and admins), logins repeated in the file and rejected rows.
  */
 export function importSummary(report: GroupStudentsImportReport): string {
   const parts = [
@@ -46,7 +46,7 @@ export function importSummary(report: GroupStudentsImportReport): string {
   ];
   if (report.alreadyInGroup > 0) parts.push(`Już w grupie: ${report.alreadyInGroup}.`);
   if (report.notStudentLogins.length > 0) {
-    parts.push(`Pominięte konta prowadzących: ${report.notStudentLogins.length}.`);
+    parts.push(`Pominięte konta pracowników: ${report.notStudentLogins.length}.`);
   }
   if (report.duplicatesInFile > 0) parts.push(`Duplikaty w pliku: ${report.duplicatesInFile}.`);
   if (report.invalid > 0) parts.push(`Błędne wiersze: ${report.invalid}.`);

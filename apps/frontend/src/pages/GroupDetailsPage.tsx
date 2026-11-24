@@ -3,11 +3,10 @@ import type { GroupDto, GroupStudentDto } from '@gamification/shared';
 import { Link } from 'react-router';
 import { fetchGroup, fetchGroupStudents, importGroupStudents } from '../api/groups';
 import { ImportError, validateCsvFile } from '../api/users';
-import { useAuth } from '../auth/AuthContext';
 import { GroupStudentsTable } from '../components/GroupStudentsTable';
 import { Alert, Button, ButtonLink } from '../components/ui';
 import { AlertCircleIcon, SpinnerIcon } from '../components/ui/icons';
-import { ROLE_HOME } from '../routes/roles';
+import { GROUPS_LIST_PATH } from '../routes/roles';
 import { groupMeta, importSummary, toGroupLoadError, type GroupLoadError } from './groupDetails';
 import './GroupDetailsPage.css';
 
@@ -22,20 +21,25 @@ type ImportState =
 /** How long the "Zaimportowano…" toast stays on screen. */
 const TOAST_MS = 6000;
 
+const LIST_REFRESH_FAILED = 'Nie udało się odświeżyć listy studentów.';
+
 /** Group details with its students (SCRUM-78, Figma "06 Grupa po imporcie"). */
 export function GroupDetailsPage({ groupId }: { groupId: string }) {
-  const { user } = useAuth();
   const [state, setState] = useState<LoadState>({ status: 'loading' });
-  // Bumped to load the group again: "Spróbuj ponownie" (with the spinner) or after an import
-  // (silently: the current list stays until the new one arrives).
+  // Bumped to load the group again: "Spróbuj ponownie" (with the spinner).
   const [attempt, setAttempt] = useState(0);
   const [importState, setImportState] = useState<ImportState>({ status: 'idle' });
   const [toast, setToast] = useState<string | null>(null);
+  // Set when an import succeeded but reloading the student list failed; the current list stays.
+  const [refreshError, setRefreshError] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
-  // "Moje grupy" is the lecturer's start page (group list, SCRUM-76).
-  const groupsPath = user ? ROLE_HOME[user.role] : '/';
+  const refreshAbort = useRef<AbortController | null>(null);
+  // Same list path for lecturers and admins; ROLE_HOME.admin is a placeholder, not the list.
+  const groupsPath = GROUPS_LIST_PATH;
 
   useEffect(() => {
+    refreshAbort.current?.abort();
     const controller = new AbortController();
     Promise.all([
       fetchGroup(groupId, controller.signal),
@@ -46,7 +50,10 @@ export function GroupDetailsPage({ groupId }: { groupId: string }) {
         if (controller.signal.aborted) return;
         setState({ status: 'error', error: toGroupLoadError(error) });
       });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      refreshAbort.current?.abort();
+    };
   }, [groupId, attempt]);
 
   useEffect(() => {
@@ -58,6 +65,27 @@ export function GroupDetailsPage({ groupId }: { groupId: string }) {
   function retry() {
     setState({ status: 'loading' });
     setAttempt((n) => n + 1);
+  }
+
+  async function refreshStudents() {
+    refreshAbort.current?.abort();
+    const controller = new AbortController();
+    refreshAbort.current = controller;
+    setIsRefreshing(true);
+    try {
+      const [group, students] = await Promise.all([
+        fetchGroup(groupId, controller.signal),
+        fetchGroupStudents(groupId, controller.signal),
+      ]);
+      if (controller.signal.aborted) return;
+      setState({ status: 'ready', group, students });
+      setRefreshError(false);
+    } catch {
+      if (controller.signal.aborted) return;
+      setRefreshError(true);
+    } finally {
+      if (!controller.signal.aborted) setIsRefreshing(false);
+    }
   }
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
@@ -73,12 +101,13 @@ export function GroupDetailsPage({ groupId }: { groupId: string }) {
     }
 
     setToast(null);
+    setRefreshError(false);
     setImportState({ status: 'uploading' });
     try {
       const report = await importGroupStudents(groupId, file);
       setImportState({ status: 'idle' });
       setToast(importSummary(report));
-      setAttempt((n) => n + 1);
+      await refreshStudents();
     } catch (error) {
       setImportState({
         status: 'error',
@@ -174,6 +203,19 @@ export function GroupDetailsPage({ groupId }: { groupId: string }) {
           </header>
 
           {importState.status === 'error' && <Alert type="error">{importState.message}</Alert>}
+
+          {refreshError && (
+            <div className="group-view__error">
+              <Alert type="error">{LIST_REFRESH_FAILED}</Alert>
+              <Button
+                variant="secondary"
+                loading={isRefreshing}
+                onClick={() => void refreshStudents()}
+              >
+                Spróbuj ponownie
+              </Button>
+            </div>
+          )}
 
           <GroupStudentsPanel students={state.students} />
         </>

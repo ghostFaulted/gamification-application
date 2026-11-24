@@ -197,12 +197,12 @@ describe('GroupDetailsPage', () => {
     expect(await screen.findByRole('heading', { name: 'Lista studentów (1)' })).toBeTruthy();
   });
 
-  it('links "Moje grupy" to the start page of an admin', async () => {
+  it('links "Moje grupy" to the group list for an admin', async () => {
     mockApi(okGroup());
     renderPage({ login: 'admin1', role: 'admin' });
 
     await screen.findByRole('heading', { level: 1, name: group.name });
-    expect(screen.getByRole('link', { name: 'Moje grupy' }).getAttribute('href')).toBe('/admin');
+    expect(screen.getByRole('link', { name: 'Moje grupy' }).getAttribute('href')).toBe('/lecturer');
   });
 
   it('imports a CSV into the group, reloads the list and shows a toast', async () => {
@@ -225,6 +225,39 @@ describe('GroupDetailsPage', () => {
     expect(importCall?.[1]?.body).toBeInstanceOf(FormData);
     // The list was refreshed in place, without the full-page spinner.
     expect(screen.queryByText('Ładowanie grupy…')).toBeNull();
+  });
+
+  it('keeps the list and shows a retry alert when refresh after an import fails', async () => {
+    const routes = okGroup();
+    routes[`GET ${GROUP_URL}`] = [
+      () => jsonResponse(200, { ...group, studentCount: 2 }),
+      () => jsonResponse(500, { statusCode: 500, message: 'Internal server error' }),
+      () => jsonResponse(200, { ...group, studentCount: 3 }),
+    ];
+    routes[`GET ${STUDENTS_URL}`] = [
+      () => jsonResponse(200, [student(1), student(2)]),
+      () => jsonResponse(500, { statusCode: 500, message: 'Internal server error' }),
+      () => jsonResponse(200, [student(1), student(2), student(3)]),
+    ];
+    routes[`POST ${IMPORT_URL}`] = [() => jsonResponse(200, report)];
+    mockApi(routes);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Lista studentów (2)' });
+
+    chooseFile(new File(['login\ns500003\n'], 'grupa.csv', { type: 'text/csv' }));
+
+    expect(await screen.findByText('Zaimportowano 1 studenta. Już w grupie: 2.')).toBeTruthy();
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Nie udało się odświeżyć listy studentów.',
+    );
+    expect(screen.getByRole('heading', { name: 'Lista studentów (2)' })).toBeTruthy();
+    expect(screen.queryByText('Ładowanie grupy…')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }));
+
+    expect(await screen.findByRole('heading', { name: 'Lista studentów (3)' })).toBeTruthy();
+    expect(screen.getByText('Zaimportowano 1 studenta. Już w grupie: 2.')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('rejects a non-CSV file before sending it', async () => {
