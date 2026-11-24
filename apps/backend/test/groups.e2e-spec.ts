@@ -10,6 +10,7 @@ import { TokenService } from '../src/auth/token.service';
 import {
   DuplicateCourseCodeError,
   DuplicateGroupNameError,
+  GroupNotFoundError,
   GroupsRepository,
   type CourseRecord,
   type CreateCourseData,
@@ -51,13 +52,10 @@ class NoRevokedTokensRepository extends RevokedTokensRepository {
   }
 }
 
+const SEED_USERS: readonly UserSummary[] = [LECTURER_1, LECTURER_2, ADMIN_1, STUDENT_1];
+
 class InMemoryGroupsRepository extends GroupsRepository {
-  readonly users = new Map<string, UserSummary>([
-    [LECTURER_1.id, LECTURER_1],
-    [LECTURER_2.id, LECTURER_2],
-    [ADMIN_1.id, ADMIN_1],
-    [STUDENT_1.id, STUDENT_1],
-  ]);
+  readonly users = new Map<string, UserSummary>(SEED_USERS.map((user) => [user.id, user]));
   readonly courses = new Map<string, CourseRecord>();
   readonly groups = new Map<
     string,
@@ -72,7 +70,6 @@ class InMemoryGroupsRepository extends GroupsRepository {
       updatedAt: Date;
     }
   >();
-
   /** Students of each group, keyed by group id. */
   readonly students = new Map<string, GroupStudentRecord[]>();
 
@@ -80,6 +77,10 @@ class InMemoryGroupsRepository extends GroupsRepository {
     this.courses.clear();
     this.groups.clear();
     this.students.clear();
+    this.users.clear();
+    for (const user of SEED_USERS) {
+      this.users.set(user.id, user);
+    }
   }
 
   async findUserById(id: string): Promise<UserSummary | null> {
@@ -184,15 +185,61 @@ class InMemoryGroupsRepository extends GroupsRepository {
   }
 
   async deleteGroup(id: string): Promise<boolean> {
-    return this.groups.delete(id);
+    const deleted = this.groups.delete(id);
+    this.students.delete(id);
+    return deleted;
   }
 
   async findGroupStudents(groupId: string): Promise<GroupStudentRecord[]> {
     return this.students.get(groupId) ?? [];
   }
 
-  async importStudents(): Promise<ImportGroupStudentsResult> {
-    throw new Error('Not used in these tests');
+  async importStudents(
+    groupId: string,
+    rawLogins: readonly string[],
+  ): Promise<ImportGroupStudentsResult> {
+    if (!this.groups.has(groupId)) {
+      throw new GroupNotFoundError();
+    }
+
+    const normalizedLogins = rawLogins.map((login) => login.trim().toLowerCase());
+    if (normalizedLogins.some((login) => login.length === 0)) {
+      throw new Error('Login must not be empty');
+    }
+
+    const uniqueLogins = [...new Set(normalizedLogins)];
+    const members = this.students.get(groupId) ?? [];
+    const memberIds = new Set(members.map((student) => student.id));
+    const result: ImportGroupStudentsResult = {
+      addedLogins: [],
+      createdLogins: [],
+      alreadyInGroupLogins: [],
+      notStudentLogins: [],
+      duplicatesCount: normalizedLogins.length - uniqueLogins.length,
+    };
+
+    for (const login of uniqueLogins) {
+      let account = [...this.users.values()].find((user) => user.login.toLowerCase() === login);
+      if (!account) {
+        account = { id: randomUUID(), login, role: 'student' };
+        this.users.set(account.id, account);
+        result.createdLogins.push(login);
+      }
+      if (account.role !== 'student') {
+        result.notStudentLogins.push(login);
+        continue;
+      }
+      if (memberIds.has(account.id)) {
+        result.alreadyInGroupLogins.push(login);
+        continue;
+      }
+      members.push({ id: account.id, login: account.login, assignedAt: new Date() });
+      memberIds.add(account.id);
+      result.addedLogins.push(login);
+    }
+
+    this.students.set(groupId, members);
+    return result;
   }
 
   private hydrateGroup(raw: {
@@ -212,7 +259,7 @@ class InMemoryGroupsRepository extends GroupsRepository {
       courseName: course.name,
       courseCode: course.code,
       lecturerLogin: lecturer.login,
-      studentCount: 0,
+      studentCount: this.students.get(raw.id)?.length ?? 0,
     };
   }
 }
@@ -531,5 +578,280 @@ describe('Courses and Groups CRUD (e2e)', () => {
         .set('Cookie', cookieFor(STUDENT_1))
         .expect(403);
     });
+  });
+
+  it('validates create and update payloads and returns 404 for a missing group', async () => {
+    const courseRes = await request(app.getHttpServer())
+      .post('/api/courses')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ name: 'Inżynieria oprogramowania' })
+      .expect(201);
+    const courseId = courseRes.body.id as string;
+
+    await request(app.getHttpServer())
+      .post('/api/groups')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ courseId, name: '   ' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/groups')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ name: 'Grupa 1' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/groups')
+      .set('Cookie', cookieFor(STUDENT_1))
+      .send({ courseId, name: 'Grupa 1' })
+      .expect(403);
+
+    const first = await request(app.getHttpServer())
+      .post('/api/groups')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ courseId, name: 'Grupa 1' })
+      .expect(201);
+    const groupId = first.body.id as string;
+
+    await request(app.getHttpServer())
+      .post('/api/groups')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ courseId, name: 'Grupa 2' })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch(`/api/groups/${groupId}`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({})
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch(`/api/groups/${groupId}`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ name: '  ' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch(`/api/groups/${groupId}`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .set('Content-Type', 'application/x-www-form-urlencoded')
+      .send('name=Grupa%201A')
+      .expect(415);
+
+    await request(app.getHttpServer())
+      .patch(`/api/groups/${groupId}`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ name: 'grupa 2' })
+      .expect(409);
+
+    const missingId = '99999999-9999-4999-8999-999999999999';
+    for (const user of [LECTURER_1, ADMIN_1]) {
+      await request(app.getHttpServer())
+        .get(`/api/groups/${missingId}`)
+        .set('Cookie', cookieFor(user))
+        .expect(404);
+
+      await request(app.getHttpServer())
+        .patch(`/api/groups/${missingId}`)
+        .set('Cookie', cookieFor(user))
+        .send({ name: 'Nieistniejąca' })
+        .expect(404);
+
+      await request(app.getHttpServer())
+        .delete(`/api/groups/${missingId}`)
+        .set('Cookie', cookieFor(user))
+        .expect(404);
+    }
+
+    await request(app.getHttpServer())
+      .get('/api/groups?courseId=not-a-uuid')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(400);
+  });
+
+  it('filters a lecturer list by course and lets an admin manage another lecturer group', async () => {
+    const courseARes = await request(app.getHttpServer())
+      .post('/api/courses')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ name: 'Inżynieria oprogramowania' })
+      .expect(201);
+    const courseA = courseARes.body.id as string;
+
+    const courseBRes = await request(app.getHttpServer())
+      .post('/api/courses')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ name: 'Algorytmy' })
+      .expect(201);
+    const courseB = courseBRes.body.id as string;
+
+    const groupARes = await request(app.getHttpServer())
+      .post('/api/groups')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ courseId: courseA, name: 'Grupa 1' })
+      .expect(201);
+    const groupA = groupARes.body.id as string;
+
+    const groupBRes = await request(app.getHttpServer())
+      .post('/api/groups')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ courseId: courseB, name: 'Grupa 2' })
+      .expect(201);
+    const groupB = groupBRes.body.id as string;
+
+    const filtered = await request(app.getHttpServer())
+      .get(`/api/groups?courseId=${courseA}`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(200);
+    expect(filtered.body).toEqual([expect.objectContaining({ id: groupA, name: 'Grupa 1' })]);
+
+    const ownList = await request(app.getHttpServer())
+      .get('/api/groups')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(200);
+    expect(ownList.body).toHaveLength(2);
+
+    const otherList = await request(app.getHttpServer())
+      .get('/api/groups')
+      .set('Cookie', cookieFor(LECTURER_2))
+      .expect(200);
+    expect(otherList.body).toHaveLength(0);
+
+    const adminList = await request(app.getHttpServer())
+      .get('/api/groups')
+      .set('Cookie', cookieFor(ADMIN_1))
+      .expect(200);
+    expect(adminList.body).toHaveLength(2);
+
+    const adminGet = await request(app.getHttpServer())
+      .get(`/api/groups/${groupA}`)
+      .set('Cookie', cookieFor(ADMIN_1))
+      .expect(200);
+    expect(adminGet.body).toEqual(
+      expect.objectContaining({ id: groupA, lecturerId: LECTURER_1.id }),
+    );
+
+    const adminPatch = await request(app.getHttpServer())
+      .patch(`/api/groups/${groupA}`)
+      .set('Cookie', cookieFor(ADMIN_1))
+      .send({ description: 'Poprawka administratora' })
+      .expect(200);
+    expect(adminPatch.body.description).toBe('Poprawka administratora');
+
+    const ownerGet = await request(app.getHttpServer())
+      .get(`/api/groups/${groupA}`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(200);
+    expect(ownerGet.body.description).toBe('Poprawka administratora');
+
+    await request(app.getHttpServer())
+      .delete(`/api/groups/${groupA}`)
+      .set('Cookie', cookieFor(ADMIN_1))
+      .expect(204);
+
+    await request(app.getHttpServer())
+      .get(`/api/groups/${groupA}`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(404);
+
+    const remaining = await request(app.getHttpServer())
+      .get('/api/groups')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(200);
+    expect(remaining.body).toEqual([expect.objectContaining({ id: groupB })]);
+  });
+
+  it('imports students into a group, skips them on re-import, and rejects an invalid CSV', async () => {
+    const courseRes = await request(app.getHttpServer())
+      .post('/api/courses')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ name: 'Inżynieria oprogramowania' })
+      .expect(201);
+    const courseId = courseRes.body.id as string;
+
+    const groupRes = await request(app.getHttpServer())
+      .post('/api/groups')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ courseId, name: 'Grupa 1' })
+      .expect(201);
+    const groupId = groupRes.body.id as string;
+
+    const csv = Buffer.from(
+      [
+        'login;name',
+        's1;Jan',
+        'S2;Anna',
+        's1;Jan ponownie',
+        'student1;Istniejący',
+        'lecturer1;Prowadzący',
+        'bad login;Ola',
+      ].join('\n'),
+    );
+
+    const first = await request(app.getHttpServer())
+      .post(`/api/groups/${groupId}/students/import`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .attach('file', csv, 'students.csv')
+      .expect(200);
+
+    expect(first.body).toEqual({
+      added: 3,
+      addedLogins: ['s1', 's2', 'student1'],
+      createdAccounts: 2,
+      createdLogins: ['s1', 's2'],
+      alreadyInGroup: 0,
+      alreadyInGroupLogins: [],
+      notStudentLogins: ['lecturer1'],
+      duplicatesInFile: 1,
+      invalid: 1,
+      errors: [{ row: 7, value: 'bad login', reason: 'Login contains invalid characters' }],
+    });
+
+    const afterImport = await request(app.getHttpServer())
+      .get(`/api/groups/${groupId}`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(200);
+    expect(afterImport.body.studentCount).toBe(3);
+
+    const second = await request(app.getHttpServer())
+      .post(`/api/groups/${groupId}/students/import`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .attach('file', csv, 'students.csv')
+      .expect(200);
+
+    expect(second.body).toEqual({
+      added: 0,
+      addedLogins: [],
+      createdAccounts: 0,
+      createdLogins: [],
+      alreadyInGroup: 3,
+      alreadyInGroupLogins: ['s1', 's2', 'student1'],
+      notStudentLogins: ['lecturer1'],
+      duplicatesInFile: 1,
+      invalid: 1,
+      errors: [{ row: 7, value: 'bad login', reason: 'Login contains invalid characters' }],
+    });
+
+    const afterReimport = await request(app.getHttpServer())
+      .get(`/api/groups/${groupId}`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(200);
+    expect(afterReimport.body.studentCount).toBe(3);
+
+    await request(app.getHttpServer())
+      .post(`/api/groups/${groupId}/students/import`)
+      .set('Cookie', cookieFor(LECTURER_2))
+      .attach('file', csv, 'students.csv')
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post(`/api/groups/${groupId}/students/import`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .attach('file', Buffer.from('user\ns1\n'), 'students.csv')
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post(`/api/groups/${groupId}/students/import`)
+      .attach('file', csv, 'students.csv')
+      .expect(401);
   });
 });
