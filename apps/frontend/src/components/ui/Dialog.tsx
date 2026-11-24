@@ -41,6 +41,15 @@ export function Dialog({
     }
   }, [open]);
 
+  function requestCancel() {
+    if (confirmLoading) return;
+    const el = ref.current;
+    // Close first so the native close algorithm can restore focus, then notify
+    // the parent (which may unmount the dialog in the same turn).
+    if (el?.open) el.close();
+    onCancel();
+  }
+
   return (
     <dialog
       ref={ref}
@@ -49,10 +58,10 @@ export function Dialog({
       aria-describedby={bodyId}
       onCancel={(event) => {
         event.preventDefault();
-        if (!confirmLoading) onCancel();
+        requestCancel();
       }}
       onClick={(event) => {
-        if (event.target === event.currentTarget && !confirmLoading) onCancel();
+        if (event.target === event.currentTarget) requestCancel();
       }}
     >
       <h2 id={titleId} className="ui-dialog__title">
@@ -62,7 +71,7 @@ export function Dialog({
         {children}
       </div>
       <div className="ui-dialog__actions">
-        <Button variant="secondary" onClick={onCancel} disabled={confirmLoading}>
+        <Button variant="secondary" onClick={requestCancel} disabled={confirmLoading}>
           Anuluj
         </Button>
         <Button variant={confirmVariant} loading={confirmLoading} onClick={onConfirm}>
