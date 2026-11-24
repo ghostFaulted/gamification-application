@@ -34,7 +34,7 @@ export interface ApiFetchOptions {
 }
 
 /**
- * Calls the backend, e.g. `apiFetch<User>('/api/users/me')`, with the session cookie.
+ * Calls the backend, e.g. `apiFetch<MeResponse>('/api/auth/me')`, with the session cookie.
  * Returns the parsed JSON body or throws ApiError; a 401 also runs the unauthorized handler.
  */
 export async function apiFetch<T>(
@@ -93,8 +93,8 @@ function errorMessage(status: number, data: unknown): string {
   return 'Wystąpił nieoczekiwany błąd. Spróbuj ponownie.';
 }
 
-// TODO: remove this dev-only mock once the auth backend exists.
-// To test an expired session, log in and run in the browser console: __simulateExpiredSession()
+// Dev-only helper (not in production builds) to test an expired session without waiting for it.
+// To test it, log in and run in the browser console: __simulateExpiredSession()
 // It sends a request that answers 401 locally, so the app logs out with "Sesja wygasła".
 const DEV_EXPIRED_PATH = '/api/__dev/expired-session';
 
