@@ -7,11 +7,10 @@ import {
   Req,
   UnauthorizedException,
   UnsupportedMediaTypeException,
-  UseGuards,
 } from '@nestjs/common';
 import type { CourseDto } from '@gamification/shared';
-import { JwtAuthGuard, type AuthenticatedRequest } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
+import { Auth } from '../auth/auth.decorator';
+import type { AuthenticatedRequest } from '../auth/jwt-auth.guard';
 import type { AuthUserPayload } from '../auth/token.service';
 import { GroupsService } from './groups.service';
 import { parseCreateCourseBody } from './groups.validation';
@@ -24,7 +23,7 @@ function requireUser(req: AuthenticatedRequest): AuthUserPayload {
 }
 
 @Controller('courses')
-@UseGuards(JwtAuthGuard, RolesGuard('lecturer', 'admin'))
+@Auth('lecturer', 'admin')
 export class CoursesController {
   constructor(private readonly groupsService: GroupsService) {}
 
