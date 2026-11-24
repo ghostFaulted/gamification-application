@@ -156,7 +156,7 @@ export class GroupsService {
     groupId: string,
     file: UploadedCsvFile | undefined,
   ): Promise<GroupStudentsImportReport> {
-    // Access is checked first, so a foreign group answers 403/404 whatever the file contains.
+    // GroupAccessGuard already checked this before the upload was read; kept for other callers.
     await this.findOwnedOrAdminGroup(actor, groupId);
     // Throws 400 for a missing, non-CSV, empty or malformed file.
     const parsed = this.csvParser.parseUsersCsv(file);
@@ -181,6 +181,11 @@ export class GroupsService {
       }
       throw error;
     }
+  }
+
+  /** Throws 404 for a missing group and 403 when the actor is neither its owner nor an admin. */
+  async assertGroupAccess(actor: AuthUserPayload, groupId: string): Promise<void> {
+    await this.findOwnedOrAdminGroup(actor, groupId);
   }
 
   private async findOwnedOrAdminGroup(

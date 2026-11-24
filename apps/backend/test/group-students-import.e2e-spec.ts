@@ -155,6 +155,21 @@ describe('POST /api/groups/:id/students/import (e2e)', () => {
     expect(repository.importCalls).toEqual([]);
   });
 
+  it('returns 403 for another lecturer group before multer limits apply', async () => {
+    await importAs(LECTURER_2, 'lecturer')
+      .field('note', 'extra')
+      .attach('file', csv(), 'students.csv')
+      .expect(403);
+    expect(repository.importCalls).toEqual([]);
+  });
+
+  it('returns 404 for an unknown group before multer limits apply', async () => {
+    await importAs(ADMIN_1, 'admin', MISSING_GROUP_ID)
+      .field('note', 'extra')
+      .attach('file', csv(), 'students.csv')
+      .expect(404);
+  });
+
   it('returns 404 for an unknown group', async () => {
     await importAs(ADMIN_1, 'admin', MISSING_GROUP_ID)
       .attach('file', csv(), 'students.csv')

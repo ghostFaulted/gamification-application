@@ -12,6 +12,7 @@ import {
   UnauthorizedException,
   UnsupportedMediaTypeException,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -20,6 +21,7 @@ import { Auth } from '../auth/auth.decorator';
 import type { AuthenticatedRequest } from '../auth/jwt-auth.guard';
 import { MAX_CSV_SIZE_BYTES, type UploadedCsvFile } from '../users/csv-parser.service';
 import type { AuthUserPayload } from '../auth/token.service';
+import { GroupAccessGuard } from './group-access.guard';
 import { GroupsService } from './groups.service';
 import { parseCreateGroupBody, parseUpdateGroupBody, parseUuid } from './groups.validation';
 
@@ -72,7 +74,9 @@ export class GroupsController {
 
   @Post(':id/students/import')
   @HttpCode(HttpStatus.OK)
-  // Same upload limits as POST /api/users/import; @Auth guards run before the file is read.
+  // Runs after the controller-level @Auth guards and before FileInterceptor.
+  @UseGuards(GroupAccessGuard)
+  // Same upload limits as POST /api/users/import.
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: MAX_CSV_SIZE_BYTES, files: 1, fields: 0 } }),
   )

@@ -140,6 +140,9 @@ export async function importGroupStudents(
     throw new Error('Login must not be empty');
   }
   const uniqueLogins = Array.from(new Set(normalizedLogins));
+  // Rows are written in sorted order, not file order: concurrent imports of overlapping logins
+  // then wait on each other in the same order instead of deadlocking (40P01).
+  const sortedLogins = [...uniqueLogins].sort();
 
   return database.transaction(async (tx) => {
     // FOR SHARE keeps the group from being deleted until the import commits.
@@ -156,7 +159,7 @@ export async function importGroupStudents(
     const accounts = new Map<string, { id: string; role: Role }>();
     const added = new Set<string>();
 
-    for (const chunk of chunks(uniqueLogins)) {
+    for (const chunk of chunks(sortedLogins)) {
       const inserted = await tx
         .insert(users)
         .values(chunk.map((login) => ({ login, role: 'student' as const })))
@@ -175,10 +178,12 @@ export async function importGroupStudents(
       }
     }
 
-    const studentIds = uniqueLogins.flatMap((login) => {
-      const account = accounts.get(login);
-      return account?.role === 'student' ? [account.id] : [];
-    });
+    const studentIds = uniqueLogins
+      .flatMap((login) => {
+        const account = accounts.get(login);
+        return account?.role === 'student' ? [account.id] : [];
+      })
+      .sort();
 
     for (const chunk of chunks(studentIds)) {
       const linked = await tx

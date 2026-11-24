@@ -20,6 +20,8 @@ function createFakeDb({
   const memberIds = new Set(members);
   const userInsertSizes: number[] = [];
   const linkInsertSizes: number[] = [];
+  const insertedLoginOrder: string[] = [];
+  const linkedIdOrder: string[] = [];
   // The user lookup always follows the insert of the same chunk, so it answers for that chunk.
   let lastLoginChunk: string[] = [];
 
@@ -43,6 +45,7 @@ function createFakeDb({
             if (table === users) {
               lastLoginChunk = rows.map((row) => row.login);
               userInsertSizes.push(rows.length);
+              insertedLoginOrder.push(...lastLoginChunk);
               const created: Array<{ login: string }> = [];
               for (const { login } of rows) {
                 if (!stored.some((account) => account.login.toLowerCase() === login)) {
@@ -54,6 +57,7 @@ function createFakeDb({
             }
 
             linkInsertSizes.push(rows.length);
+            linkedIdOrder.push(...rows.map((row) => row.studentId));
             const linked: Array<{ studentId: string }> = [];
             for (const { studentId } of rows) {
               if (!memberIds.has(studentId)) {
@@ -72,7 +76,14 @@ function createFakeDb({
     transaction: async <T>(cb: (t: typeof tx) => Promise<T>): Promise<T> => cb(tx),
   } as unknown as AppDatabase;
 
-  return { fakeDb, memberIds, userInsertSizes, linkInsertSizes };
+  return {
+    fakeDb,
+    memberIds,
+    userInsertSizes,
+    linkInsertSizes,
+    insertedLoginOrder,
+    linkedIdOrder,
+  };
 }
 
 describe('importGroupStudents', () => {
@@ -101,6 +112,16 @@ describe('importGroupStudents', () => {
       duplicatesCount: 1,
     });
     expect([...memberIds].sort()).toEqual(['id-s1', 'id-s2', 'id-s3', 'id-s4']);
+  });
+
+  it('writes rows in sorted order but reports them in file order', async () => {
+    const { fakeDb, insertedLoginOrder, linkedIdOrder } = createFakeDb();
+
+    const result = await importGroupStudents(GROUP_ID, ['s3', 's1', 's2'], fakeDb);
+
+    expect(insertedLoginOrder).toEqual(['s1', 's2', 's3']);
+    expect(linkedIdOrder).toEqual(['id-s1', 'id-s2', 'id-s3']);
+    expect(result.addedLogins).toEqual(['s3', 's1', 's2']);
   });
 
   it('is idempotent: a second import of the same logins adds nobody', async () => {
