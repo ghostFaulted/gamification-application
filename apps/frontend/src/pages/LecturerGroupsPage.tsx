@@ -133,12 +133,7 @@ function GroupCard({ group }: { group: GroupDto }) {
         <div className="group-card__empty">
           <UsersIcon className="group-card__icon" />
           <p className="group-card__empty-title">Brak studentów w grupie</p>
-          <p className="group-card__empty-text">
-            Zaimportuj listę uczestników z pliku CSV pobranego z USOS.
-          </p>
-          <ButtonLink to="/import" variant="secondary">
-            Import studentów z CSV
-          </ButtonLink>
+          <p className="group-card__empty-text">Do tej grupy nie przypisano jeszcze studentów.</p>
         </div>
       )}
     </article>
