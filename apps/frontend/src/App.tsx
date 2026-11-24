@@ -3,7 +3,9 @@ import { useAuth } from './auth/AuthContext';
 import { AuthProvider } from './auth/AuthProvider';
 import { SessionGate } from './auth/SessionGate';
 import { AppLayout } from './components/AppLayout';
+import { GroupFormPlaceholder } from './pages/GroupFormPlaceholder';
 import { ImportPage } from './pages/ImportPage';
+import { LecturerGroupsPage } from './pages/LecturerGroupsPage';
 import { LoginPage } from './pages/LoginPage';
 import { RoleHomePage } from './pages/RoleHomePage';
 import { ProtectedRoute, type RedirectState } from './routes/ProtectedRoute';
@@ -24,7 +26,15 @@ export function App() {
                   <Route path="/student" element={<RoleHomePage role="student" />} />
                 </Route>
                 <Route element={<ProtectedRoute roles={['lecturer']} />}>
-                  <Route path="/lecturer" element={<RoleHomePage role="lecturer" />} />
+                  <Route path="/lecturer" element={<LecturerGroupsPage />} />
+                  <Route
+                    path="/lecturer/groups/new"
+                    element={<GroupFormPlaceholder mode="create" />}
+                  />
+                  <Route
+                    path="/lecturer/groups/:groupId/edit"
+                    element={<GroupFormPlaceholder mode="edit" />}
+                  />
                 </Route>
                 <Route element={<ProtectedRoute roles={['admin']} />}>
                   <Route path="/admin" element={<RoleHomePage role="admin" />} />

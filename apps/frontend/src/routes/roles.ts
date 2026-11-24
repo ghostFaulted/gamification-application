@@ -10,6 +10,13 @@ export const ROLE_HOME: Record<Role, string> = {
   admin: '/admin',
 };
 
+/** Group form routes (SCRUM-77); until then they show a placeholder. */
+export const GROUP_NEW_PATH = '/lecturer/groups/new';
+
+export function groupEditPath(groupId: string): string {
+  return `/lecturer/groups/${encodeURIComponent(groupId)}/edit`;
+}
+
 export const ROLE_LABELS: Record<Role, string> = {
   student: 'Student',
   lecturer: 'Prowadzący',
