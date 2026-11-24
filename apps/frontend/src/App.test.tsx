@@ -5,6 +5,7 @@ import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AppRoutes } from './App';
 import { AuthContext, type AuthContextValue } from './auth/AuthContext';
+import { jsonResponse, mockApi } from './test/api';
 
 const GROUP_ID = '6f1c2b8e-3d4a-4c5b-9e6f-7a8b9c0d1e2f';
 
@@ -28,25 +29,6 @@ const student: GroupStudentDto = {
   login: 's500001',
   assignedAt: '2026-11-18T10:00:00.000Z',
 };
-
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
-function mockApi(routes: Record<string, () => Response>) {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn<typeof fetch>(async (input, init) => {
-      const key = `${init?.method ?? 'GET'} ${String(input)}`;
-      const handler = routes[key];
-      if (!handler) throw new Error(`Unexpected request ${key}`);
-      return handler();
-    }),
-  );
-}
 
 function authValue(user: AuthUser): AuthContextValue {
   return {
@@ -84,10 +66,10 @@ const studentUser: AuthUser = { login: 's500001', role: 'student' };
 
 function stubGroupView() {
   mockApi({
-    [`GET /api/groups/${GROUP_ID}`]: () => jsonResponse(200, group),
-    [`GET /api/groups/${GROUP_ID}/students`]: () => jsonResponse(200, [student]),
-    'GET /api/groups': () => jsonResponse(200, [group]),
-    'GET /api/courses': () => jsonResponse(200, []),
+    [`GET /api/groups/${GROUP_ID}`]: [() => jsonResponse(200, group)],
+    [`GET /api/groups/${GROUP_ID}/students`]: [() => jsonResponse(200, [student])],
+    'GET /api/groups': [() => jsonResponse(200, [group])],
+    'GET /api/courses': [() => jsonResponse(200, [])],
   });
 }
 

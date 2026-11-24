@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GroupImportPage } from './GroupImportPage';
+import { jsonResponse, mockApi } from '../test/api';
 
 const GROUP_ID = '6f1c2b8e-3d4a-4c5b-9e6f-7a8b9c0d1e2f';
 const GROUP_URL = `/api/groups/${GROUP_ID}`;
@@ -36,30 +37,6 @@ const report: GroupStudentsImportReport = {
   invalid: 0,
   errors: [],
 };
-
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
-type Handler = () => Response | Promise<Response>;
-
-/** Answers fetch by "METHOD url"; each handler list is used in order, the last one repeats. */
-function mockApi(routes: Record<string, Handler[]>) {
-  const used: Record<string, number> = {};
-  const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
-    const key = `${init?.method ?? 'GET'} ${String(input)}`;
-    const handlers = routes[key];
-    if (!handlers) throw new Error(`Unexpected request ${key}`);
-    const index = Math.min(used[key] ?? 0, handlers.length - 1);
-    used[key] = (used[key] ?? 0) + 1;
-    return handlers[index]();
-  });
-  vi.stubGlobal('fetch', fetchMock);
-  return fetchMock;
-}
 
 function renderPage(groupId = GROUP_ID) {
   return render(
