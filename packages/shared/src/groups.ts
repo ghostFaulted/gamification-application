@@ -65,3 +65,12 @@ export interface GroupStudentsImportReport {
   invalid: number;
   errors: UsersImportRowError[];
 }
+
+/** One student of a group, as returned by GET /api/groups/:id/students. */
+export interface GroupStudentDto {
+  /** User id of the student. */
+  id: string;
+  login: string;
+  /** ISO timestamp of adding the student to the group. */
+  assignedAt: string;
+}

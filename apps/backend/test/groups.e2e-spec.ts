@@ -16,6 +16,7 @@ import {
   type CreateGroupData,
   type FindGroupsFilter,
   type GroupRecord,
+  type GroupStudentRecord,
   type ImportGroupStudentsResult,
   type UpdateGroupData,
   type UserSummary,
@@ -72,9 +73,13 @@ class InMemoryGroupsRepository extends GroupsRepository {
     }
   >();
 
+  /** Students of each group, keyed by group id. */
+  readonly students = new Map<string, GroupStudentRecord[]>();
+
   reset(): void {
     this.courses.clear();
     this.groups.clear();
+    this.students.clear();
   }
 
   async findUserById(id: string): Promise<UserSummary | null> {
@@ -180,6 +185,10 @@ class InMemoryGroupsRepository extends GroupsRepository {
 
   async deleteGroup(id: string): Promise<boolean> {
     return this.groups.delete(id);
+  }
+
+  async findGroupStudents(groupId: string): Promise<GroupStudentRecord[]> {
+    return this.students.get(groupId) ?? [];
   }
 
   async importStudents(): Promise<ImportGroupStudentsResult> {
@@ -431,5 +440,96 @@ describe('Courses and Groups CRUD (e2e)', () => {
       .set('Content-Type', 'application/x-www-form-urlencoded')
       .send('name=G3')
       .expect(415);
+  });
+
+  describe('GET /api/groups/:id/students', () => {
+    async function createGroupOf(owner: UserSummary): Promise<string> {
+      const courseRes = await request(app.getHttpServer())
+        .post('/api/courses')
+        .set('Cookie', cookieFor(ADMIN_1))
+        .send({ name: 'Programowanie obiektowe' })
+        .expect(201);
+      const groupRes = await request(app.getHttpServer())
+        .post('/api/groups')
+        .set('Cookie', cookieFor(ADMIN_1))
+        .send({ courseId: courseRes.body.id, name: 'Grupa 2', lecturerId: owner.id })
+        .expect(201);
+      return groupRes.body.id as string;
+    }
+
+    it('returns the students of the lecturer own group with ISO assignment dates', async () => {
+      const groupId = await createGroupOf(LECTURER_1);
+      repository.students.set(groupId, [
+        { id: STUDENT_1.id, login: 's500001', assignedAt: new Date('2026-11-18T10:00:00.000Z') },
+        {
+          id: '55555555-5555-4555-8555-555555555555',
+          login: 's500002',
+          assignedAt: new Date('2026-11-18T10:00:00.000Z'),
+        },
+      ]);
+
+      const res = await request(app.getHttpServer())
+        .get(`/api/groups/${groupId}/students`)
+        .set('Cookie', cookieFor(LECTURER_1))
+        .expect(200);
+
+      expect(res.body).toEqual([
+        { id: STUDENT_1.id, login: 's500001', assignedAt: '2026-11-18T10:00:00.000Z' },
+        {
+          id: '55555555-5555-4555-8555-555555555555',
+          login: 's500002',
+          assignedAt: '2026-11-18T10:00:00.000Z',
+        },
+      ]);
+    });
+
+    it('returns an empty list for a group without students', async () => {
+      const groupId = await createGroupOf(LECTURER_1);
+
+      const res = await request(app.getHttpServer())
+        .get(`/api/groups/${groupId}/students`)
+        .set('Cookie', cookieFor(LECTURER_1))
+        .expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+
+    it('lets an admin read the students of any group', async () => {
+      const groupId = await createGroupOf(LECTURER_2);
+
+      await request(app.getHttpServer())
+        .get(`/api/groups/${groupId}/students`)
+        .set('Cookie', cookieFor(ADMIN_1))
+        .expect(200);
+    });
+
+    it('returns 403 for another lecturer group, 404 for a missing group and 400 for a bad id', async () => {
+      const groupId = await createGroupOf(LECTURER_2);
+
+      await request(app.getHttpServer())
+        .get(`/api/groups/${groupId}/students`)
+        .set('Cookie', cookieFor(LECTURER_1))
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .get('/api/groups/99999999-9999-4999-8999-999999999999/students')
+        .set('Cookie', cookieFor(LECTURER_1))
+        .expect(404);
+
+      await request(app.getHttpServer())
+        .get('/api/groups/not-a-uuid/students')
+        .set('Cookie', cookieFor(LECTURER_1))
+        .expect(400);
+    });
+
+    it('returns 401 without a session and 403 for a student', async () => {
+      const groupId = await createGroupOf(LECTURER_1);
+
+      await request(app.getHttpServer()).get(`/api/groups/${groupId}/students`).expect(401);
+      await request(app.getHttpServer())
+        .get(`/api/groups/${groupId}/students`)
+        .set('Cookie', cookieFor(STUDENT_1))
+        .expect(403);
+    });
   });
 });

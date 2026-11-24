@@ -17,6 +17,7 @@ import {
   type CreateGroupData,
   type FindGroupsFilter,
   type GroupRecord,
+  type GroupStudentRecord,
   type ImportGroupStudentsResult,
   type UpdateGroupData,
   type User,
@@ -205,6 +206,10 @@ class FakeGroupsRepository extends GroupsRepository {
     return this.groups.delete(id);
   }
 
+  async findGroupStudents(): Promise<GroupStudentRecord[]> {
+    return [];
+  }
+
   async importStudents(
     _groupId: string,
     rawLogins: readonly string[],
@@ -292,6 +297,11 @@ const ROUTES: RouteCase[] = [
     expected: { ...STAFF_ONLY, lecturer: 204, admin: 204 },
   },
   {
+    route: 'GET /api/groups/:id/students',
+    send: (r) => r.get(`/api/groups/${GROUP_ID}/students`),
+    expected: { ...STAFF_ONLY, lecturer: 200, admin: 200 },
+  },
+  {
     route: 'POST /api/groups/:id/students/import',
     send: (r) =>
       r
@@ -306,6 +316,7 @@ const OWNED_GROUP_ROUTES = [
   'GET /api/groups/:id',
   'PATCH /api/groups/:id',
   'DELETE /api/groups/:id',
+  'GET /api/groups/:id/students',
   'POST /api/groups/:id/students/import',
 ];
 
