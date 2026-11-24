@@ -99,7 +99,7 @@ describe('LecturerGroupsPage', () => {
 
     const populated = within(cardNamed(group.name));
     expect(populated.getByRole('link', { name: group.name }).getAttribute('href')).toBe(
-      `/groups/${group.id}`,
+      `/lecturer/groups/${group.id}`,
     );
     expect(
       populated.getByRole('link', { name: `Edytuj grupę ${group.name}` }).getAttribute('href'),
@@ -113,7 +113,7 @@ describe('LecturerGroupsPage', () => {
 
     const empty = within(cardNamed(emptyGroup.name));
     expect(empty.getByRole('link', { name: emptyGroup.name }).getAttribute('href')).toBe(
-      `/groups/${emptyGroup.id}`,
+      `/lecturer/groups/${emptyGroup.id}`,
     );
     expect(empty.getByText('Brak studentów w grupie')).toBeTruthy();
     expect(empty.getByText('Programowanie obiektowe · zimowy 2026/2027')).toBeTruthy();
