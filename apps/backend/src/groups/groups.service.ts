@@ -5,15 +5,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { CourseDto, GroupDto } from '@gamification/shared';
+import type { CourseDto, GroupDto, GroupStudentsImportReport } from '@gamification/shared';
 import type { AuthUserPayload } from '../auth/token.service';
 import {
   DuplicateCourseCodeError,
   DuplicateGroupNameError,
+  GroupNotFoundError,
   GroupsRepository,
   type CourseRecord,
   type GroupRecord,
 } from '../db';
+import { CsvParserService, type UploadedCsvFile } from '../users/csv-parser.service';
 import type {
   ValidatedCreateCourseInput,
   ValidatedCreateGroupInput,
@@ -51,7 +53,10 @@ function toGroupDto(record: GroupRecord): GroupDto {
 
 @Injectable()
 export class GroupsService {
-  constructor(private readonly repository: GroupsRepository) {}
+  constructor(
+    private readonly repository: GroupsRepository,
+    private readonly csvParser: CsvParserService,
+  ) {}
 
   async listCourses(): Promise<CourseDto[]> {
     const records = await this.repository.findCourses();
@@ -143,6 +148,38 @@ export class GroupsService {
     const deleted = await this.repository.deleteGroup(groupId);
     if (!deleted) {
       throw new NotFoundException('Group not found');
+    }
+  }
+
+  async importStudents(
+    actor: AuthUserPayload,
+    groupId: string,
+    file: UploadedCsvFile | undefined,
+  ): Promise<GroupStudentsImportReport> {
+    // Access is checked first, so a foreign group answers 403/404 whatever the file contains.
+    await this.findOwnedOrAdminGroup(actor, groupId);
+    // Throws 400 for a missing, non-CSV, empty or malformed file.
+    const parsed = this.csvParser.parseUsersCsv(file);
+
+    try {
+      const result = await this.repository.importStudents(groupId, parsed.validLogins);
+      return {
+        added: result.addedLogins.length,
+        addedLogins: result.addedLogins,
+        createdAccounts: result.createdLogins.length,
+        createdLogins: result.createdLogins,
+        alreadyInGroup: result.alreadyInGroupLogins.length,
+        alreadyInGroupLogins: result.alreadyInGroupLogins,
+        notStudentLogins: result.notStudentLogins,
+        duplicatesInFile: result.duplicatesCount,
+        invalid: parsed.invalidRowsCount,
+        errors: parsed.errors,
+      };
+    } catch (error) {
+      if (error instanceof GroupNotFoundError) {
+        throw new NotFoundException(error.message);
+      }
+      throw error;
     }
   }
 
