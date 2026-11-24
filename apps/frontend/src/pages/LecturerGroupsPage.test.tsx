@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import type { GroupDto } from '@gamification/shared';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import type { AuthUser, GroupDto } from '@gamification/shared';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { LecturerGroupsPage } from './LecturerGroupsPage';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { AuthContext, type AuthContextValue } from '../auth/AuthContext';
 import { jsonResponse, mockApi } from '../test/api';
+import { polyfillDialog } from '../test/dialog';
+import { LecturerGroupsPage } from './LecturerGroupsPage';
 
 const group: GroupDto = {
   id: '6f1c2b8e-3d4a-4c5b-9e6f-7a8b9c0d1e2f',
@@ -30,11 +32,14 @@ const emptyGroup: GroupDto = {
   studentCount: 0,
 };
 
-function renderPage() {
+function renderPage(user: AuthUser = { login: 'lecturer1', role: 'lecturer' }) {
+  const auth = { user } as AuthContextValue;
   return render(
-    <MemoryRouter>
-      <LecturerGroupsPage />
-    </MemoryRouter>,
+    <AuthContext.Provider value={auth}>
+      <MemoryRouter>
+        <LecturerGroupsPage />
+      </MemoryRouter>
+    </AuthContext.Provider>,
   );
 }
 
@@ -44,6 +49,10 @@ function cardNamed(name: string): HTMLElement {
   if (!card) throw new Error(`No card for ${name}`);
   return card;
 }
+
+beforeAll(() => {
+  polyfillDialog();
+});
 
 afterEach(() => {
   cleanup();
@@ -65,6 +74,7 @@ describe('LecturerGroupsPage', () => {
     expect(screen.getByRole('link', { name: 'Nowa grupa' }).getAttribute('href')).toBe(
       '/lecturer/groups/new',
     );
+    expect(screen.queryByRole('link', { name: 'Import studentów z CSV' })).toBeNull();
   });
 
   it('renders cards with a link to the group view, edit, import and the student count', async () => {
@@ -73,6 +83,7 @@ describe('LecturerGroupsPage', () => {
 
     expect(await screen.findByText('Semestr zimowy 2026/2027 · 2 grupy zajęciowe')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: 'Moje grupy' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Import studentów z CSV' })).toBeNull();
 
     const populated = within(cardNamed(group.name));
     expect(populated.getByRole('link', { name: group.name }).getAttribute('href')).toBe(
@@ -81,6 +92,7 @@ describe('LecturerGroupsPage', () => {
     expect(
       populated.getByRole('link', { name: `Edytuj grupę ${group.name}` }).getAttribute('href'),
     ).toBe(`/lecturer/groups/${group.id}/edit`);
+    expect(populated.getByRole('button', { name: `Usuń grupę ${group.name}` })).toBeTruthy();
     expect(populated.getByText('Programowanie obiektowe (PO) · zimowy 2026/2027')).toBeTruthy();
     expect(populated.getByText('Wtorek 10:15')).toBeTruthy();
     expect(populated.getByText('2 studentów')).toBeTruthy();
@@ -99,6 +111,28 @@ describe('LecturerGroupsPage', () => {
         .getByRole('link', { name: `Import studentów z CSV do grupy ${emptyGroup.name}` })
         .getAttribute('href'),
     ).toBe(`/lecturer/groups/${emptyGroup.id}/import`);
+  });
+
+  it('uses the title "Grupy" for an admin and still offers create and edit', async () => {
+    mockApi({ 'GET /api/groups': [() => jsonResponse(200, [group])] });
+    renderPage({ login: 'admin1', role: 'admin' });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Grupy' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Moje grupy' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Nowa grupa' }).getAttribute('href')).toBe(
+      '/lecturer/groups/new',
+    );
+    expect(
+      screen.getByRole('link', { name: `Edytuj grupę ${group.name}` }).getAttribute('href'),
+    ).toBe(`/lecturer/groups/${group.id}/edit`);
+  });
+
+  it('uses an empty-state title for an admin when there are no groups', async () => {
+    mockApi({ 'GET /api/groups': [() => jsonResponse(200, [])] });
+    renderPage({ login: 'admin1', role: 'admin' });
+
+    expect(await screen.findByRole('heading', { name: 'Brak grup' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Nie masz jeszcze żadnych grup' })).toBeNull();
   });
 
   it('uses the singular label for one student', async () => {
@@ -128,5 +162,60 @@ describe('LecturerGroupsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }));
 
     expect(await screen.findByRole('heading', { level: 2, name: emptyGroup.name })).toBeTruthy();
+  });
+
+  it('asks for confirmation before deleting a group and refreshes the list', async () => {
+    const fetchMock = mockApi({
+      'GET /api/groups': [
+        () => jsonResponse(200, [group, emptyGroup]),
+        () => jsonResponse(200, [emptyGroup]),
+      ],
+      [`DELETE /api/groups/${group.id}`]: [() => new Response(null, { status: 204 })],
+    });
+    renderPage();
+    await screen.findByRole('heading', { level: 2, name: group.name });
+
+    fireEvent.click(screen.getByRole('button', { name: `Usuń grupę ${group.name}` }));
+    expect(await screen.findByRole('dialog', { name: 'Usuń grupę' })).toBeTruthy();
+    expect(screen.getByText(/Usunąć grupę „Programowanie obiektowe – gr. 2”\?/)).toBeTruthy();
+    expect(screen.getByText(/Studenci zostaną z niej wypisani \(2 studentów\)/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anuluj' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('heading', { level: 2, name: group.name })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: `Usuń grupę ${group.name}` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }));
+
+    expect(
+      await screen.findByText('Usunięto grupę „Programowanie obiektowe – gr. 2”.'),
+    ).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('heading', { name: group.name })).toBeNull());
+    expect(screen.getByRole('heading', { level: 2, name: emptyGroup.name })).toBeTruthy();
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) => url === `/api/groups/${group.id}` && init?.method === 'DELETE',
+      ),
+    ).toBe(true);
+  });
+
+  it('keeps the list and shows a Polish error when deletion fails', async () => {
+    mockApi({
+      'GET /api/groups': [() => jsonResponse(200, [group])],
+      [`DELETE /api/groups/${group.id}`]: [
+        () => jsonResponse(500, { statusCode: 500, message: 'Internal server error' }),
+      ],
+    });
+    renderPage();
+    await screen.findByRole('heading', { level: 2, name: group.name });
+
+    fireEvent.click(screen.getByRole('button', { name: `Usuń grupę ${group.name}` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Nie udało się usunąć grupy. Spróbuj ponownie.',
+    );
+    expect(screen.getByRole('dialog', { name: 'Usuń grupę' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: group.name })).toBeTruthy();
   });
 });

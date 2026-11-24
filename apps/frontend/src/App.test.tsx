@@ -107,7 +107,7 @@ describe('group view routes', () => {
     stubGroupView();
     renderAt('/lecturer', admin);
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Moje grupy' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Grupy' })).toBeTruthy();
     expect(screen.getByTestId('location').textContent).toBe('/lecturer');
     expect(screen.getByRole('link', { name: group.name }).getAttribute('href')).toBe(
       `/lecturer/groups/${GROUP_ID}`,
@@ -121,6 +121,14 @@ describe('group view routes', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Nowa grupa' })).toBeTruthy();
     expect(screen.getByTestId('location').textContent).toBe('/lecturer/groups/new');
     expect(screen.queryByText('Ładowanie grupy…')).toBeNull();
+  });
+
+  it('lets an admin open the group create form', async () => {
+    stubGroupView();
+    renderAt('/lecturer/groups/new', admin);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Nowa grupa' })).toBeTruthy();
+    expect(screen.getByTestId('location').textContent).toBe('/lecturer/groups/new');
   });
 
   it('opens the edit form at /lecturer/groups/:id/edit, not the group view', async () => {

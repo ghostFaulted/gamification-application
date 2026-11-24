@@ -44,16 +44,14 @@ export function AppRoutes() {
           <Route element={<ProtectedRoute roles={['student']} />}>
             <Route path="/student" element={<RoleHomePage role="student" />} />
           </Route>
-          {/* Group list and group view: lecturers and admins (same as GET /api/groups). */}
+          {/* Group list, view, create, edit and import: lecturers and admins (same as the API). */}
           <Route element={<ProtectedRoute roles={GROUP_VIEW_ROLES} />}>
             <Route path="/lecturer" element={<LecturerGroupsPage />} />
-            <Route path="/lecturer/groups/:groupId" element={<GroupDetailsRoute />} />
-            <Route path="/groups/:id" element={<LegacyGroupDetailsRedirect />} />
-          </Route>
-          <Route element={<ProtectedRoute roles={['lecturer']} />}>
             <Route path="/lecturer/groups/new" element={<GroupFormPage mode="create" />} />
             <Route path="/lecturer/groups/:groupId/edit" element={<GroupFormPage mode="edit" />} />
             <Route path="/lecturer/groups/:groupId/import" element={<GroupImportPage />} />
+            <Route path="/lecturer/groups/:groupId" element={<GroupDetailsRoute />} />
+            <Route path="/groups/:id" element={<LegacyGroupDetailsRedirect />} />
           </Route>
           <Route element={<ProtectedRoute roles={['admin']} />}>
             <Route path="/admin" element={<RoleHomePage role="admin" />} />

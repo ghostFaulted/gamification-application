@@ -848,4 +848,56 @@ describe('Courses and Groups CRUD (e2e)', () => {
       .attach('file', csv, 'students.csv')
       .expect(401);
   });
+
+  it('deletes a group, unenrolls its students and keeps their accounts', async () => {
+    const courseRes = await request(app.getHttpServer())
+      .post('/api/courses')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ name: 'Bazy danych' })
+      .expect(201);
+
+    const groupRes = await request(app.getHttpServer())
+      .post('/api/groups')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ courseId: courseRes.body.id, name: 'Grupa do usunięcia' })
+      .expect(201);
+    const groupId = groupRes.body.id as string;
+
+    await request(app.getHttpServer())
+      .post(`/api/groups/${groupId}/students/import`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .attach('file', Buffer.from('login\ns500101\ns500102\n'), 'students.csv')
+      .expect(200);
+
+    const before = await request(app.getHttpServer())
+      .get(`/api/groups/${groupId}/students`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(200);
+    expect(before.body).toHaveLength(2);
+    const importedIds = (before.body as Array<{ id: string }>).map((row) => row.id);
+    for (const id of importedIds) {
+      expect(repository.users.has(id)).toBe(true);
+    }
+
+    await request(app.getHttpServer())
+      .delete(`/api/groups/${groupId}`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(204);
+
+    await request(app.getHttpServer())
+      .get(`/api/groups/${groupId}`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .get(`/api/groups/${groupId}/students`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(404);
+
+    expect(repository.students.has(groupId)).toBe(false);
+    expect(repository.groups.has(groupId)).toBe(false);
+    for (const id of importedIds) {
+      expect(repository.users.has(id)).toBe(true);
+    }
+  });
 });

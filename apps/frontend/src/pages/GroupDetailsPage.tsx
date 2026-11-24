@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import type { GroupDto, GroupStudentDto } from '@gamification/shared';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { fetchGroup, fetchGroupStudents, importGroupStudents } from '../api/groups';
+import { DeleteGroupDialog } from '../components/DeleteGroupDialog';
 import { ImportError, validateCsvFile } from '../api/users';
 import { GroupStudentsTable } from '../components/GroupStudentsTable';
 import { Alert, Button, ButtonLink } from '../components/ui';
@@ -33,6 +34,8 @@ export function GroupDetailsPage({ groupId }: { groupId: string }) {
   // Set when an import succeeded but reloading the student list failed; the current list stays.
   const [refreshError, setRefreshError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const navigate = useNavigate();
   const fileInput = useRef<HTMLInputElement>(null);
   const refreshAbort = useRef<AbortController | null>(null);
   // Same list path for lecturers and admins; ROLE_HOME.admin is a placeholder, not the list.
@@ -193,13 +196,18 @@ export function GroupDetailsPage({ groupId }: { groupId: string }) {
               tabIndex={-1}
               onChange={(event) => void handleFile(event)}
             />
-            <Button
-              variant="secondary"
-              loading={importState.status === 'uploading'}
-              onClick={() => fileInput.current?.click()}
-            >
-              {importState.status === 'uploading' ? 'Importowanie…' : 'Import studentów z CSV'}
-            </Button>
+            <div className="group-view__actions">
+              <Button
+                variant="secondary"
+                loading={importState.status === 'uploading'}
+                onClick={() => fileInput.current?.click()}
+              >
+                {importState.status === 'uploading' ? 'Importowanie…' : 'Import studentów z CSV'}
+              </Button>
+              <Button variant="danger-secondary" onClick={() => setDeleteOpen(true)}>
+                Usuń grupę
+              </Button>
+            </div>
           </header>
 
           {importState.status === 'error' && <Alert type="error">{importState.message}</Alert>}
@@ -218,6 +226,20 @@ export function GroupDetailsPage({ groupId }: { groupId: string }) {
           )}
 
           <GroupStudentsPanel students={state.students} />
+
+          {deleteOpen && (
+            <DeleteGroupDialog
+              group={{
+                id: state.group.id,
+                name: state.group.name,
+                studentCount: state.students.length,
+              }}
+              onCancel={() => setDeleteOpen(false)}
+              onDeleted={(name) => {
+                void navigate(GROUPS_LIST_PATH, { state: { toast: `Usunięto grupę „${name}”.` } });
+              }}
+            />
+          )}
         </>
       )}
     </main>

@@ -6,11 +6,12 @@ import type {
   GroupStudentsImportReport,
 } from '@gamification/shared';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AuthContext, type AuthContextValue } from '../auth/AuthContext';
 import { GroupDetailsPage } from './GroupDetailsPage';
 import { jsonResponse, mockApi, type ApiHandler } from '../test/api';
+import { polyfillDialog } from '../test/dialog';
 
 const GROUP_ID = '6f1c2b8e-3d4a-4c5b-9e6f-7a8b9c0d1e2f';
 const GROUP_URL = `/api/groups/${GROUP_ID}`;
@@ -58,12 +59,24 @@ function okGroup(
   };
 }
 
+function ListProbe() {
+  const location = useLocation();
+  const toast = (location.state as { toast?: string } | null)?.toast;
+  return <div data-testid="list-page">{toast}</div>;
+}
+
 function renderPage(user: AuthUser = { login: 'lecturer1', role: 'lecturer' }) {
   const auth = { user } as AuthContextValue;
   return render(
     <AuthContext.Provider value={auth}>
-      <MemoryRouter>
-        <GroupDetailsPage groupId={GROUP_ID} />
+      <MemoryRouter initialEntries={[`/lecturer/groups/${GROUP_ID}`]}>
+        <Routes>
+          <Route
+            path="/lecturer/groups/:groupId"
+            element={<GroupDetailsPage groupId={GROUP_ID} />}
+          />
+          <Route path="/lecturer" element={<ListProbe />} />
+        </Routes>
       </MemoryRouter>
     </AuthContext.Provider>,
   );
@@ -72,6 +85,10 @@ function renderPage(user: AuthUser = { login: 'lecturer1', role: 'lecturer' }) {
 function chooseFile(file: File) {
   fireEvent.change(screen.getByLabelText('Plik CSV ze studentami'), { target: { files: [file] } });
 }
+
+beforeAll(() => {
+  polyfillDialog();
+});
 
 afterEach(() => {
   cleanup();
@@ -271,5 +288,51 @@ describe('GroupDetailsPage', () => {
       ),
     );
     expect(screen.getByRole('heading', { name: 'Lista studentów (2)' })).toBeTruthy();
+  });
+  it('asks for confirmation before deleting and then returns to the list with a toast', async () => {
+    const fetchMock = mockApi({
+      ...okGroup(),
+      [`DELETE ${GROUP_URL}`]: [() => new Response(null, { status: 204 })],
+    });
+    renderPage();
+    await screen.findByRole('heading', { level: 1, name: group.name });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń grupę' }));
+    expect(await screen.findByRole('dialog', { name: 'Usuń grupę' })).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Usunąć grupę „Programowanie obiektowe – gr. 2”? Studenci zostaną z niej wypisani (2 studentów).',
+      ),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anuluj' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('heading', { level: 1, name: group.name })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń grupę' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }));
+
+    expect((await screen.findByTestId('list-page')).textContent).toBe(
+      'Usunięto grupę „Programowanie obiektowe – gr. 2”.',
+    );
+    expect(
+      fetchMock.mock.calls.some(([url, init]) => url === GROUP_URL && init?.method === 'DELETE'),
+    ).toBe(true);
+  });
+
+  it('shows a Polish error in the dialog when deletion fails', async () => {
+    mockApi({
+      ...okGroup(),
+      [`DELETE ${GROUP_URL}`]: [() => jsonResponse(403, { statusCode: 403, message: 'Forbidden' })],
+    });
+    renderPage();
+    await screen.findByRole('heading', { level: 1, name: group.name });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń grupę' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Nie masz dostępu do tej grupy.');
+    expect(screen.getByRole('dialog', { name: 'Usuń grupę' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: group.name })).toBeTruthy();
   });
 });

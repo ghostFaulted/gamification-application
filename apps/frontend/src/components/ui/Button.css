@@ -71,3 +71,31 @@
 .ui-button--link {
   text-decoration: none;
 }
+
+.ui-button--danger {
+  min-height: 38px;
+  padding: 7px var(--space-4);
+  background: var(--color-danger);
+  color: #fff;
+  font: var(--font-label-s);
+}
+
+.ui-button--danger:hover:not(:disabled) {
+  background: var(--color-danger-text);
+}
+
+/* Unobtrusive destructive action, same size as secondary. */
+.ui-button--danger-secondary {
+  min-height: 38px;
+  padding: 7px var(--space-4);
+  border-color: var(--color-danger);
+  background: var(--color-surface);
+  color: var(--color-danger-text);
+  font: var(--font-label-s);
+}
+
+.ui-button--danger-secondary:hover:not(:disabled) {
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger-text);
+  color: var(--color-danger-text);
+}

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { GroupDto } from '@gamification/shared';
-import { Link } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { userFacingApiError } from '../api/client';
 import { fetchGroups } from '../api/groups';
+import { useAuth } from '../auth/AuthContext';
+import { DeleteGroupDialog, type DeleteGroupTarget } from '../components/DeleteGroupDialog';
 import { Alert, Button, ButtonLink } from '../components/ui';
 import { SpinnerIcon, UsersIcon } from '../components/ui/icons';
 import { GROUP_NEW_PATH, groupEditPath, groupImportPath, groupPath } from '../routes/roles';
@@ -13,11 +15,31 @@ type LoadState =
   | { status: 'error'; message: string }
   | { status: 'ready'; groups: GroupDto[] };
 
-/** "Moje grupy": the lecturer's groups (SCRUM-76, Figma "02 Panel prowadzącego"). */
+const TOAST_MS = 6000;
+
+interface ListLocationState {
+  toast?: string;
+}
+
+/** Group list: the lecturer's groups, or all groups for an admin (SCRUM-76 / SCRUM-22). */
 export function LecturerGroupsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const location = useLocation();
+  const navigate = useNavigate();
   const [state, setState] = useState<LoadState>({ status: 'loading' });
-  // Bumped by "Spróbuj ponownie" to load the list again.
+  // Bumped by "Spróbuj ponownie" or after a delete, to load the list again.
   const [attempt, setAttempt] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<DeleteGroupTarget | null>(null);
+  const toast = (location.state as ListLocationState | null)?.toast ?? null;
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => {
+      navigate('.', { replace: true, state: {} });
+    }, TOAST_MS);
+    return () => clearTimeout(timer);
+  }, [toast, navigate]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -38,11 +60,25 @@ export function LecturerGroupsPage() {
     setAttempt((n) => n + 1);
   }
 
+  function handleDeleted(name: string) {
+    setPendingDelete(null);
+    navigate('.', { replace: true, state: { toast: `Usunięto grupę „${name}”.` } });
+    setAttempt((n) => n + 1);
+  }
+
+  const title = isAdmin ? 'Grupy' : 'Moje grupy';
+
   return (
     <main className="groups">
+      {toast && (
+        <Alert type="success" className="groups__toast">
+          {toast}
+        </Alert>
+      )}
+
       <div className="groups__header">
         <div>
-          <h1 className="groups__title">Moje grupy</h1>
+          <h1 className="groups__title">{title}</h1>
           {state.status === 'ready' && state.groups.length > 0 && (
             <p className="groups__subtitle">{subtitle(state.groups)}</p>
           )}
@@ -51,7 +87,6 @@ export function LecturerGroupsPage() {
           <ButtonLink to={GROUP_NEW_PATH} variant="secondary">
             Nowa grupa
           </ButtonLink>
-          <ButtonLink to="/import">Import studentów z CSV</ButtonLink>
         </div>
       </div>
 
@@ -75,7 +110,7 @@ export function LecturerGroupsPage() {
         <section className="groups__empty" aria-labelledby="groups-empty-title">
           <UsersIcon className="groups__empty-icon" />
           <h2 id="groups-empty-title" className="groups__empty-title">
-            Nie masz jeszcze żadnych grup
+            {isAdmin ? 'Brak grup' : 'Nie masz jeszcze żadnych grup'}
           </h2>
           <p className="groups__empty-text">
             Utwórz grupę zajęciową, a potem zaimportuj do niej listę studentów z USOS.
@@ -88,21 +123,28 @@ export function LecturerGroupsPage() {
         <ul className="groups__list" aria-label="Lista grup">
           {state.groups.map((group) => (
             <li key={group.id}>
-              <GroupCard group={group} />
+              <GroupCard group={group} onDelete={() => setPendingDelete(group)} />
             </li>
           ))}
         </ul>
       )}
 
       <Alert type="info">
-        Listę uczestników zajęć pobierzesz z USOS jako plik CSV i dodasz przyciskiem „Import
-        studentów z CSV”.
+        Listę uczestników zajęć pobierzesz z USOS jako plik CSV i zaimportujesz do wybranej grupy.
       </Alert>
+
+      {pendingDelete && (
+        <DeleteGroupDialog
+          group={pendingDelete}
+          onCancel={() => setPendingDelete(null)}
+          onDeleted={handleDeleted}
+        />
+      )}
     </main>
   );
 }
 
-function GroupCard({ group }: { group: GroupDto }) {
+function GroupCard({ group, onDelete }: { group: GroupDto; onDelete: () => void }) {
   const course = group.courseCode ? `${group.courseName} (${group.courseCode})` : group.courseName;
   const meta = [course, group.semester].filter(Boolean).join(' · ');
 
@@ -114,14 +156,24 @@ function GroupCard({ group }: { group: GroupDto }) {
             {group.name}
           </Link>
         </h2>
-        <ButtonLink
-          to={groupEditPath(group.id)}
-          variant="secondary"
-          className="group-card__edit"
-          aria-label={`Edytuj grupę ${group.name}`}
-        >
-          Edytuj
-        </ButtonLink>
+        <div className="group-card__actions">
+          <ButtonLink
+            to={groupEditPath(group.id)}
+            variant="secondary"
+            className="group-card__edit"
+            aria-label={`Edytuj grupę ${group.name}`}
+          >
+            Edytuj
+          </ButtonLink>
+          <Button
+            variant="danger-secondary"
+            className="group-card__edit"
+            aria-label={`Usuń grupę ${group.name}`}
+            onClick={onDelete}
+          >
+            Usuń
+          </Button>
+        </div>
       </div>
       <p className="group-card__meta">{meta}</p>
       {group.description && <p className="group-card__description">{group.description}</p>}
