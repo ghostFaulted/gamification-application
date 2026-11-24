@@ -150,7 +150,7 @@ export function GroupDetailsPage({ groupId }: { groupId: string }) {
           <header className="group-view__header">
             <div>
               <h1 className="group-view__title">{state.group.name}</h1>
-              <p className="group-view__meta">{groupMeta(state.group)}</p>
+              <p className="group-view__meta">{groupMeta(state.group, state.students.length)}</p>
               {state.group.description && (
                 <p className="group-view__description">{state.group.description}</p>
               )}

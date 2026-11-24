@@ -126,6 +126,19 @@ describe('GroupDetailsPage', () => {
     expect(within(breadcrumb).getByText(group.name).getAttribute('aria-current')).toBe('page');
   });
 
+  it('counts students in the header from the fetched list, not the stale studentCount', async () => {
+    mockApi({
+      [`GET ${GROUP_URL}`]: [() => jsonResponse(200, { ...group, studentCount: 5 })],
+      [`GET ${STUDENTS_URL}`]: [() => jsonResponse(200, [student(1), student(2), student(3)])],
+    });
+    renderPage();
+
+    expect(
+      await screen.findByText('Programowanie obiektowe (PO) · zimowy 2026/2027 · 3 studentów'),
+    ).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Lista studentów (3)' })).toBeTruthy();
+  });
+
   it('shows the empty state for a group without students', async () => {
     mockApi(okGroup([]));
     renderPage();

@@ -21,12 +21,13 @@ export function toGroupLoadError(error: unknown): GroupLoadError {
   return { kind: 'failed', message: GROUP_LOAD_FAILED };
 }
 
-/** "Programowanie obiektowe (PO) · zimowy 2026/2027 · 6 studentów". */
-export function groupMeta(group: GroupDto): string {
+/**
+ * "Programowanie obiektowe (PO) · zimowy 2026/2027 · 6 studentów". Pass the length of the
+ * fetched student list so the header matches the table; without it, the group's studentCount.
+ */
+export function groupMeta(group: GroupDto, studentCount = group.studentCount): string {
   const course = group.courseCode ? `${group.courseName} (${group.courseCode})` : group.courseName;
-  return [course, group.semester, studentCountLabel(group.studentCount)]
-    .filter(Boolean)
-    .join(' · ');
+  return [course, group.semester, studentCountLabel(studentCount)].filter(Boolean).join(' · ');
 }
 
 export function studentCountLabel(count: number): string {
@@ -35,7 +36,7 @@ export function studentCountLabel(count: number): string {
 
 /**
  * Toast text after a group import, e.g. "Zaimportowano 6 studentów." plus what was skipped:
- * students already in the group, staff accounts and rejected rows.
+ * students already in the group, staff accounts, logins repeated in the file and rejected rows.
  */
 export function importSummary(report: GroupStudentsImportReport): string {
   const parts = [
@@ -47,6 +48,7 @@ export function importSummary(report: GroupStudentsImportReport): string {
   if (report.notStudentLogins.length > 0) {
     parts.push(`Pominięte konta prowadzących: ${report.notStudentLogins.length}.`);
   }
+  if (report.duplicatesInFile > 0) parts.push(`Duplikaty w pliku: ${report.duplicatesInFile}.`);
   if (report.invalid > 0) parts.push(`Błędne wiersze: ${report.invalid}.`);
   return parts.join(' ');
 }

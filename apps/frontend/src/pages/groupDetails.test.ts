@@ -58,6 +58,12 @@ describe('groupMeta', () => {
     expect(groupMeta(group)).toBe('Programowanie obiektowe (PO) · zimowy 2026/2027 · 6 studentów');
   });
 
+  it('uses the given student count (the fetched list) instead of studentCount', () => {
+    expect(groupMeta({ ...group, studentCount: 6 }, 7)).toBe(
+      'Programowanie obiektowe (PO) · zimowy 2026/2027 · 7 studentów',
+    );
+  });
+
   it('skips a missing course code and semester', () => {
     expect(groupMeta({ ...group, courseCode: null, semester: null, studentCount: 1 })).toBe(
       'Programowanie obiektowe · 1 student',
@@ -98,10 +104,20 @@ describe('importSummary', () => {
         ...empty,
         alreadyInGroup: 3,
         notStudentLogins: ['lecturer2'],
+        duplicatesInFile: 4,
         invalid: 2,
       }),
     ).toBe(
-      'Nie dodano nowych studentów. Już w grupie: 3. Pominięte konta prowadzących: 1. Błędne wiersze: 2.',
+      'Nie dodano nowych studentów. Już w grupie: 3. Pominięte konta prowadzących: 1. Duplikaty w pliku: 4. Błędne wiersze: 2.',
+    );
+  });
+
+  it('omits duplicates when there are none', () => {
+    expect(importSummary({ ...empty, added: 2, duplicatesInFile: 0 })).toBe(
+      'Zaimportowano 2 studentów.',
+    );
+    expect(importSummary({ ...empty, added: 2, duplicatesInFile: 1 })).toBe(
+      'Zaimportowano 2 studentów. Duplikaty w pliku: 1.',
     );
   });
 });
