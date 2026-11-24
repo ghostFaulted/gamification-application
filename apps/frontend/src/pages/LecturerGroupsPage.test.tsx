@@ -94,8 +94,8 @@ describe('LecturerGroupsPage', () => {
     mockApi({ 'GET /api/groups': [() => jsonResponse(200, [group, emptyGroup])] });
     renderPage();
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Moje grupy' })).toBeTruthy();
-    expect(screen.getByText('Semestr zimowy 2026/2027 · 2 grupy zajęciowe')).toBeTruthy();
+    expect(await screen.findByText('Semestr zimowy 2026/2027 · 2 grupy zajęciowe')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Moje grupy' })).toBeTruthy();
 
     const populated = within(cardNamed(group.name));
     expect(populated.getByRole('link', { name: group.name }).getAttribute('href')).toBe(
