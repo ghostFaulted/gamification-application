@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { useAuth } from './auth/AuthContext';
 import { AuthProvider } from './auth/AuthProvider';
+import { SessionGate } from './auth/SessionGate';
 import { AppLayout } from './components/AppLayout';
 import { ImportPage } from './pages/ImportPage';
 import { LoginPage } from './pages/LoginPage';
@@ -12,30 +13,32 @@ export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginRoute />} />
+        <SessionGate>
+          <Routes>
+            <Route path="/login" element={<LoginRoute />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AppLayout />}>
-              <Route index element={<HomeRedirect />} />
-              <Route element={<ProtectedRoute roles={['student']} />}>
-                <Route path="/student" element={<RoleHomePage role="student" />} />
-              </Route>
-              <Route element={<ProtectedRoute roles={['lecturer']} />}>
-                <Route path="/lecturer" element={<RoleHomePage role="lecturer" />} />
-              </Route>
-              <Route element={<ProtectedRoute roles={['admin']} />}>
-                <Route path="/admin" element={<RoleHomePage role="admin" />} />
-              </Route>
-              {/* POST /api/users/import is allowed only for lecturers and admins (RolesGuard). */}
-              <Route element={<ProtectedRoute roles={IMPORT_ROLES} />}>
-                <Route path="/import" element={<ImportRoute />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AppLayout />}>
+                <Route index element={<HomeRedirect />} />
+                <Route element={<ProtectedRoute roles={['student']} />}>
+                  <Route path="/student" element={<RoleHomePage role="student" />} />
+                </Route>
+                <Route element={<ProtectedRoute roles={['lecturer']} />}>
+                  <Route path="/lecturer" element={<RoleHomePage role="lecturer" />} />
+                </Route>
+                <Route element={<ProtectedRoute roles={['admin']} />}>
+                  <Route path="/admin" element={<RoleHomePage role="admin" />} />
+                </Route>
+                {/* POST /api/users/import is allowed only for lecturers and admins (RolesGuard). */}
+                <Route element={<ProtectedRoute roles={IMPORT_ROLES} />}>
+                  <Route path="/import" element={<ImportRoute />} />
+                </Route>
               </Route>
             </Route>
-          </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </SessionGate>
       </AuthProvider>
     </BrowserRouter>
   );

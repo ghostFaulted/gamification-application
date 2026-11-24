@@ -1,4 +1,4 @@
-import type { AuthUser, LoginResponse } from '@gamification/shared';
+import type { AuthUser, LoginResponse, MeResponse } from '@gamification/shared';
 import { ApiError, apiFetch } from './client';
 
 export interface LoginCredentials {
@@ -42,6 +42,15 @@ function loginErrorMessage(error: unknown): string {
     if (error.status === 0) return error.message;
   }
   return 'Wystąpił nieoczekiwany błąd. Spróbuj ponownie.';
+}
+
+/**
+ * Asks the server who is signed in (GET /api/auth/me), based on the auth_token cookie.
+ * Throws ApiError: 401 when there is no valid session, 0 when the server is unreachable.
+ */
+export async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser> {
+  const { user } = await apiFetch<MeResponse>('/api/auth/me', { signal });
+  return user;
 }
 
 /** Ends the session on the server: revokes the token and clears the auth_token cookie. */
