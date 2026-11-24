@@ -108,7 +108,7 @@ describe('importSummary', () => {
         invalid: 2,
       }),
     ).toBe(
-      'Nie dodano nowych studentów. Już w grupie: 3. Pominięte konta prowadzących: 1. Duplikaty w pliku: 4. Błędne wiersze: 2.',
+      'Nie dodano nowych studentów. Już w grupie: 3. Pominięte konta pracowników: 1. Duplikaty w pliku: 4. Błędne wiersze: 2.',
     );
   });
 

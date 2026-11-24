@@ -10,6 +10,9 @@ export const ROLE_HOME: Record<Role, string> = {
   admin: '/admin',
 };
 
+/** Group list (SCRUM-76). Lecturers land here after login; admins can open it too. */
+export const GROUPS_LIST_PATH = '/lecturer';
+
 /** Group create/edit form routes (SCRUM-77). */
 export const GROUP_NEW_PATH = '/lecturer/groups/new';
 
@@ -33,5 +36,5 @@ export const GROUP_VIEW_ROLES: readonly Role[] = ['lecturer', 'admin'];
 
 /** Path of the group view (SCRUM-78), e.g. for a link from the group list. */
 export function groupPath(groupId: string): string {
-  return `/groups/${encodeURIComponent(groupId)}`;
+  return `/lecturer/groups/${encodeURIComponent(groupId)}`;
 }

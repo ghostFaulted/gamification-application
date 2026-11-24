@@ -21,6 +21,8 @@ import {
   type ImportGroupStudentsResult,
   type UpdateGroupData,
   type UserSummary,
+  classifyImportedStudents,
+  prepareImportLogins,
 } from '../src/db';
 import { setupApp } from '../src/setup-app';
 
@@ -202,44 +204,36 @@ class InMemoryGroupsRepository extends GroupsRepository {
       throw new GroupNotFoundError();
     }
 
-    const normalizedLogins = rawLogins.map((login) => login.trim().toLowerCase());
-    if (normalizedLogins.some((login) => login.length === 0)) {
-      throw new Error('Login must not be empty');
-    }
-
-    const uniqueLogins = [...new Set(normalizedLogins)];
+    const { uniqueLogins, duplicatesCount } = prepareImportLogins(rawLogins);
     const members = this.students.get(groupId) ?? [];
     const memberIds = new Set(members.map((student) => student.id));
-    const result: ImportGroupStudentsResult = {
-      addedLogins: [],
-      createdLogins: [],
-      alreadyInGroupLogins: [],
-      notStudentLogins: [],
-      duplicatesCount: normalizedLogins.length - uniqueLogins.length,
-    };
+    const accounts = new Map<string, { id: string; role: UserSummary['role'] }>();
+    const created = new Set<string>();
+    const added = new Set<string>();
 
     for (const login of uniqueLogins) {
       let account = [...this.users.values()].find((user) => user.login.toLowerCase() === login);
       if (!account) {
         account = { id: randomUUID(), login, role: 'student' };
         this.users.set(account.id, account);
-        result.createdLogins.push(login);
+        created.add(login);
       }
-      if (account.role !== 'student') {
-        result.notStudentLogins.push(login);
-        continue;
+      accounts.set(login, { id: account.id, role: account.role });
+      if (account.role === 'student' && !memberIds.has(account.id)) {
+        members.push({ id: account.id, login: account.login, assignedAt: new Date() });
+        memberIds.add(account.id);
+        added.add(account.id);
       }
-      if (memberIds.has(account.id)) {
-        result.alreadyInGroupLogins.push(login);
-        continue;
-      }
-      members.push({ id: account.id, login: account.login, assignedAt: new Date() });
-      memberIds.add(account.id);
-      result.addedLogins.push(login);
     }
 
     this.students.set(groupId, members);
-    return result;
+    return classifyImportedStudents({
+      uniqueLogins,
+      accounts,
+      created,
+      added,
+      duplicatesCount,
+    });
   }
 
   private hydrateGroup(raw: {
@@ -853,5 +847,57 @@ describe('Courses and Groups CRUD (e2e)', () => {
       .post(`/api/groups/${groupId}/students/import`)
       .attach('file', csv, 'students.csv')
       .expect(401);
+  });
+
+  it('deletes a group, unenrolls its students and keeps their accounts', async () => {
+    const courseRes = await request(app.getHttpServer())
+      .post('/api/courses')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ name: 'Bazy danych' })
+      .expect(201);
+
+    const groupRes = await request(app.getHttpServer())
+      .post('/api/groups')
+      .set('Cookie', cookieFor(LECTURER_1))
+      .send({ courseId: courseRes.body.id, name: 'Grupa do usunięcia' })
+      .expect(201);
+    const groupId = groupRes.body.id as string;
+
+    await request(app.getHttpServer())
+      .post(`/api/groups/${groupId}/students/import`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .attach('file', Buffer.from('login\ns500101\ns500102\n'), 'students.csv')
+      .expect(200);
+
+    const before = await request(app.getHttpServer())
+      .get(`/api/groups/${groupId}/students`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(200);
+    expect(before.body).toHaveLength(2);
+    const importedIds = (before.body as Array<{ id: string }>).map((row) => row.id);
+    for (const id of importedIds) {
+      expect(repository.users.has(id)).toBe(true);
+    }
+
+    await request(app.getHttpServer())
+      .delete(`/api/groups/${groupId}`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(204);
+
+    await request(app.getHttpServer())
+      .get(`/api/groups/${groupId}`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .get(`/api/groups/${groupId}/students`)
+      .set('Cookie', cookieFor(LECTURER_1))
+      .expect(404);
+
+    expect(repository.students.has(groupId)).toBe(false);
+    expect(repository.groups.has(groupId)).toBe(false);
+    for (const id of importedIds) {
+      expect(repository.users.has(id)).toBe(true);
+    }
   });
 });

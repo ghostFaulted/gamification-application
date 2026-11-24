@@ -42,6 +42,13 @@
   margin-top: calc(-1 * var(--space-2));
 }
 
+.group-view__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
 /* Opened by the "Import studentów z CSV" button. */
 .group-view__file {
   display: none;

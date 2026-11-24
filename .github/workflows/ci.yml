@@ -20,3 +20,6 @@ jobs:
         run: pnpm typecheck
       - name: Build
         run: pnpm build
+      # Backend e2e and unit tests use in-memory fakes (no Postgres or LDAP).
+      - name: Test
+        run: pnpm test

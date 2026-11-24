@@ -2,8 +2,19 @@ import { Injectable } from '@nestjs/common';
 import type { Role } from '@gamification/shared';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from './client.js';
+import {
+  classifyImportedStudents,
+  prepareImportLogins,
+  type ImportGroupStudentsResult,
+} from './group-students-import.js';
 import { courses, groups, groupStudents, users, type Course } from './schema/index.js';
 import type { AppDatabase } from './users.repository.js';
+
+export {
+  classifyImportedStudents,
+  prepareImportLogins,
+  type ImportGroupStudentsResult,
+} from './group-students-import.js';
 
 export type CourseRecord = Course;
 
@@ -58,17 +69,6 @@ export interface GroupStudentRecord {
   id: string;
   login: string;
   assignedAt: Date;
-}
-
-/** Unique normalized logins of an import, split by outcome; every list keeps the input order. */
-export interface ImportGroupStudentsResult {
-  addedLogins: string[];
-  /** Accounts created by this import; a subset of `addedLogins`. */
-  createdLogins: string[];
-  alreadyInGroupLogins: string[];
-  notStudentLogins: string[];
-  /** Extra occurrences of logins repeated in the input. */
-  duplicatesCount: number;
 }
 
 export class GroupNotFoundError extends Error {
@@ -141,11 +141,7 @@ export async function importGroupStudents(
   rawLogins: readonly string[],
   database: AppDatabase = db,
 ): Promise<ImportGroupStudentsResult> {
-  const normalizedLogins = rawLogins.map((login) => login.trim().toLowerCase());
-  if (normalizedLogins.some((login) => login.length === 0)) {
-    throw new Error('Login must not be empty');
-  }
-  const uniqueLogins = Array.from(new Set(normalizedLogins));
+  const { uniqueLogins, duplicatesCount } = prepareImportLogins(rawLogins);
   // Rows are written in sorted order, not file order: concurrent imports of overlapping logins
   // then wait on each other in the same order instead of deadlocking (40P01).
   const sortedLogins = [...uniqueLogins].sort();
@@ -202,30 +198,13 @@ export async function importGroupStudents(
       }
     }
 
-    const result: ImportGroupStudentsResult = {
-      addedLogins: [],
-      createdLogins: [],
-      alreadyInGroupLogins: [],
-      notStudentLogins: [],
-      duplicatesCount: normalizedLogins.length - uniqueLogins.length,
-    };
-    for (const login of uniqueLogins) {
-      const account = accounts.get(login);
-      if (!account) {
-        throw new Error(`Imported login "${login}" was not found after insert`);
-      }
-      if (account.role !== 'student') {
-        result.notStudentLogins.push(login);
-      } else if (added.has(account.id)) {
-        result.addedLogins.push(login);
-        if (created.has(login)) {
-          result.createdLogins.push(login);
-        }
-      } else {
-        result.alreadyInGroupLogins.push(login);
-      }
-    }
-    return result;
+    return classifyImportedStudents({
+      uniqueLogins,
+      accounts,
+      created,
+      added,
+      duplicatesCount,
+    });
   });
 }
 

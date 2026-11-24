@@ -3,7 +3,7 @@ import { SpinnerIcon } from './icons';
 import './Button.css';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'danger' | 'danger-secondary';
   /** Shows a spinner, disables the button and marks it as busy. */
   loading?: boolean;
 }

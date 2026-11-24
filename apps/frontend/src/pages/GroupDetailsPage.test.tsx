@@ -6,10 +6,12 @@ import type {
   GroupStudentsImportReport,
 } from '@gamification/shared';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AuthContext, type AuthContextValue } from '../auth/AuthContext';
 import { GroupDetailsPage } from './GroupDetailsPage';
+import { jsonResponse, mockApi, type ApiHandler } from '../test/api';
+import { polyfillDialog } from '../test/dialog';
 
 const GROUP_ID = '6f1c2b8e-3d4a-4c5b-9e6f-7a8b9c0d1e2f';
 const GROUP_URL = `/api/groups/${GROUP_ID}`;
@@ -48,45 +50,33 @@ const report: GroupStudentsImportReport = {
   errors: [],
 };
 
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
-type Handler = () => Response | Promise<Response>;
-
-/** Answers fetch by "METHOD url"; each handler list is used in order, the last one repeats. */
-function mockApi(routes: Record<string, Handler[]>) {
-  const used: Record<string, number> = {};
-  const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
-    const key = `${init?.method ?? 'GET'} ${String(input)}`;
-    const handlers = routes[key];
-    if (!handlers) throw new Error(`Unexpected request ${key}`);
-    const index = Math.min(used[key] ?? 0, handlers.length - 1);
-    used[key] = (used[key] ?? 0) + 1;
-    return handlers[index]();
-  });
-  vi.stubGlobal('fetch', fetchMock);
-  return fetchMock;
-}
-
 function okGroup(
   students: GroupStudentDto[] = [student(1), student(2)],
-): Record<string, Handler[]> {
+): Record<string, ApiHandler[]> {
   return {
     [`GET ${GROUP_URL}`]: [() => jsonResponse(200, { ...group, studentCount: students.length })],
     [`GET ${STUDENTS_URL}`]: [() => jsonResponse(200, students)],
   };
 }
 
+function ListProbe() {
+  const location = useLocation();
+  const toast = (location.state as { toast?: string } | null)?.toast;
+  return <div data-testid="list-page">{toast}</div>;
+}
+
 function renderPage(user: AuthUser = { login: 'lecturer1', role: 'lecturer' }) {
   const auth = { user } as AuthContextValue;
   return render(
     <AuthContext.Provider value={auth}>
-      <MemoryRouter>
-        <GroupDetailsPage groupId={GROUP_ID} />
+      <MemoryRouter initialEntries={[`/lecturer/groups/${GROUP_ID}`]}>
+        <Routes>
+          <Route
+            path="/lecturer/groups/:groupId"
+            element={<GroupDetailsPage groupId={GROUP_ID} />}
+          />
+          <Route path="/lecturer" element={<ListProbe />} />
+        </Routes>
       </MemoryRouter>
     </AuthContext.Provider>,
   );
@@ -95,6 +85,10 @@ function renderPage(user: AuthUser = { login: 'lecturer1', role: 'lecturer' }) {
 function chooseFile(file: File) {
   fireEvent.change(screen.getByLabelText('Plik CSV ze studentami'), { target: { files: [file] } });
 }
+
+beforeAll(() => {
+  polyfillDialog();
+});
 
 afterEach(() => {
   cleanup();
@@ -197,12 +191,12 @@ describe('GroupDetailsPage', () => {
     expect(await screen.findByRole('heading', { name: 'Lista studentów (1)' })).toBeTruthy();
   });
 
-  it('links "Moje grupy" to the start page of an admin', async () => {
+  it('links "Moje grupy" to the group list for an admin', async () => {
     mockApi(okGroup());
     renderPage({ login: 'admin1', role: 'admin' });
 
     await screen.findByRole('heading', { level: 1, name: group.name });
-    expect(screen.getByRole('link', { name: 'Moje grupy' }).getAttribute('href')).toBe('/admin');
+    expect(screen.getByRole('link', { name: 'Moje grupy' }).getAttribute('href')).toBe('/lecturer');
   });
 
   it('imports a CSV into the group, reloads the list and shows a toast', async () => {
@@ -225,6 +219,39 @@ describe('GroupDetailsPage', () => {
     expect(importCall?.[1]?.body).toBeInstanceOf(FormData);
     // The list was refreshed in place, without the full-page spinner.
     expect(screen.queryByText('Ładowanie grupy…')).toBeNull();
+  });
+
+  it('keeps the list and shows a retry alert when refresh after an import fails', async () => {
+    const routes = okGroup();
+    routes[`GET ${GROUP_URL}`] = [
+      () => jsonResponse(200, { ...group, studentCount: 2 }),
+      () => jsonResponse(500, { statusCode: 500, message: 'Internal server error' }),
+      () => jsonResponse(200, { ...group, studentCount: 3 }),
+    ];
+    routes[`GET ${STUDENTS_URL}`] = [
+      () => jsonResponse(200, [student(1), student(2)]),
+      () => jsonResponse(500, { statusCode: 500, message: 'Internal server error' }),
+      () => jsonResponse(200, [student(1), student(2), student(3)]),
+    ];
+    routes[`POST ${IMPORT_URL}`] = [() => jsonResponse(200, report)];
+    mockApi(routes);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Lista studentów (2)' });
+
+    chooseFile(new File(['login\ns500003\n'], 'grupa.csv', { type: 'text/csv' }));
+
+    expect(await screen.findByText('Zaimportowano 1 studenta. Już w grupie: 2.')).toBeTruthy();
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Nie udało się odświeżyć listy studentów.',
+    );
+    expect(screen.getByRole('heading', { name: 'Lista studentów (2)' })).toBeTruthy();
+    expect(screen.queryByText('Ładowanie grupy…')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }));
+
+    expect(await screen.findByRole('heading', { name: 'Lista studentów (3)' })).toBeTruthy();
+    expect(screen.getByText('Zaimportowano 1 studenta. Już w grupie: 2.')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('rejects a non-CSV file before sending it', async () => {
@@ -261,5 +288,51 @@ describe('GroupDetailsPage', () => {
       ),
     );
     expect(screen.getByRole('heading', { name: 'Lista studentów (2)' })).toBeTruthy();
+  });
+  it('asks for confirmation before deleting and then returns to the list with a toast', async () => {
+    const fetchMock = mockApi({
+      ...okGroup(),
+      [`DELETE ${GROUP_URL}`]: [() => new Response(null, { status: 204 })],
+    });
+    renderPage();
+    await screen.findByRole('heading', { level: 1, name: group.name });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń grupę' }));
+    expect(await screen.findByRole('dialog', { name: 'Usuń grupę' })).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Usunąć grupę „Programowanie obiektowe – gr. 2”? Studenci zostaną z niej wypisani (2 studentów).',
+      ),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anuluj' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('heading', { level: 1, name: group.name })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń grupę' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }));
+
+    expect((await screen.findByTestId('list-page')).textContent).toBe(
+      'Usunięto grupę „Programowanie obiektowe – gr. 2”.',
+    );
+    expect(
+      fetchMock.mock.calls.some(([url, init]) => url === GROUP_URL && init?.method === 'DELETE'),
+    ).toBe(true);
+  });
+
+  it('shows a Polish error in the dialog when deletion fails', async () => {
+    mockApi({
+      ...okGroup(),
+      [`DELETE ${GROUP_URL}`]: [() => jsonResponse(403, { statusCode: 403, message: 'Forbidden' })],
+    });
+    renderPage();
+    await screen.findByRole('heading', { level: 1, name: group.name });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń grupę' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Nie masz dostępu do tej grupy.');
+    expect(screen.getByRole('dialog', { name: 'Usuń grupę' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: group.name })).toBeTruthy();
   });
 });

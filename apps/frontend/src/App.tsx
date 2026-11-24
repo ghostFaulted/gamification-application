@@ -19,50 +19,52 @@ import { LecturerGroupsPage } from './pages/LecturerGroupsPage';
 import { LoginPage } from './pages/LoginPage';
 import { RoleHomePage } from './pages/RoleHomePage';
 import { ProtectedRoute, type RedirectState } from './routes/ProtectedRoute';
-import { GROUP_VIEW_ROLES, IMPORT_ROLES, ROLE_HOME } from './routes/roles';
+import { GROUP_VIEW_ROLES, IMPORT_ROLES, ROLE_HOME, groupPath } from './routes/roles';
 
 export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <SessionGate>
-          <Routes>
-            <Route path="/login" element={<LoginRoute />} />
-
-            <Route element={<ProtectedRoute />}>
-              <Route element={<AppLayout />}>
-                <Route index element={<HomeRedirect />} />
-                <Route element={<ProtectedRoute roles={['student']} />}>
-                  <Route path="/student" element={<RoleHomePage role="student" />} />
-                </Route>
-                <Route element={<ProtectedRoute roles={['lecturer']} />}>
-                  <Route path="/lecturer" element={<LecturerGroupsPage />} />
-                  <Route path="/lecturer/groups/new" element={<GroupFormPage mode="create" />} />
-                  <Route
-                    path="/lecturer/groups/:groupId/edit"
-                    element={<GroupFormPage mode="edit" />}
-                  />
-                  <Route path="/lecturer/groups/:groupId/import" element={<GroupImportPage />} />
-                </Route>
-                <Route element={<ProtectedRoute roles={['admin']} />}>
-                  <Route path="/admin" element={<RoleHomePage role="admin" />} />
-                </Route>
-                {/* POST /api/users/import is allowed only for lecturers and admins (RolesGuard). */}
-                <Route element={<ProtectedRoute roles={IMPORT_ROLES} />}>
-                  <Route path="/import" element={<ImportRoute />} />
-                </Route>
-                {/* GET /api/groups/:id is allowed only for lecturers and admins. */}
-                <Route element={<ProtectedRoute roles={GROUP_VIEW_ROLES} />}>
-                  <Route path="/groups/:id" element={<GroupDetailsRoute />} />
-                </Route>
-              </Route>
-            </Route>
-
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <AppRoutes />
         </SessionGate>
       </AuthProvider>
     </BrowserRouter>
+  );
+}
+
+export function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginRoute />} />
+
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppLayout />}>
+          <Route index element={<HomeRedirect />} />
+          <Route element={<ProtectedRoute roles={['student']} />}>
+            <Route path="/student" element={<RoleHomePage role="student" />} />
+          </Route>
+          {/* Group list, view, create, edit and import: lecturers and admins (same as the API). */}
+          <Route element={<ProtectedRoute roles={GROUP_VIEW_ROLES} />}>
+            <Route path="/lecturer" element={<LecturerGroupsPage />} />
+            <Route path="/lecturer/groups/new" element={<GroupFormPage mode="create" />} />
+            <Route path="/lecturer/groups/:groupId/edit" element={<GroupFormPage mode="edit" />} />
+            <Route path="/lecturer/groups/:groupId/import" element={<GroupImportPage />} />
+            <Route path="/lecturer/groups/:groupId" element={<GroupDetailsRoute />} />
+            <Route path="/groups/:id" element={<LegacyGroupDetailsRedirect />} />
+          </Route>
+          <Route element={<ProtectedRoute roles={['admin']} />}>
+            <Route path="/admin" element={<RoleHomePage role="admin" />} />
+          </Route>
+          {/* POST /api/users/import is allowed only for lecturers and admins (RolesGuard). */}
+          <Route element={<ProtectedRoute roles={IMPORT_ROLES} />}>
+            <Route path="/import" element={<ImportRoute />} />
+          </Route>
+        </Route>
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
@@ -93,6 +95,12 @@ function ImportRoute() {
 
 /** Group view (SCRUM-78); a new id starts from a fresh page state instead of the previous group. */
 function GroupDetailsRoute() {
+  const { groupId = '' } = useParams();
+  return <GroupDetailsPage key={groupId} groupId={groupId} />;
+}
+
+/** Old group view path from #29; keeps bookmarks and older links working. */
+function LegacyGroupDetailsRedirect() {
   const { id = '' } = useParams();
-  return <GroupDetailsPage key={id} groupId={id} />;
+  return <Navigate to={groupPath(id)} replace />;
 }

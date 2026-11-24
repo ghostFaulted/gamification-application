@@ -6,7 +6,7 @@ import type {
   GroupStudentsImportReport,
   UpdateGroupRequest,
 } from '@gamification/shared';
-import { ApiError, apiFetch } from './client';
+import { ApiError, apiFetch, userFacingApiError } from './client';
 import { ImportError, translateImportMessage } from './users';
 
 /**
@@ -48,6 +48,22 @@ export function updateGroup(groupId: string, body: UpdateGroupRequest): Promise<
     method: 'PATCH',
     body,
   });
+}
+
+/** DELETE /api/groups/:id; 204 on success, 403 for someone else's group, 404 if missing. */
+export function deleteGroup(groupId: string): Promise<void> {
+  return apiFetch(`/api/groups/${encodeURIComponent(groupId)}`, { method: 'DELETE' });
+}
+
+/** Polish message for a failed group deletion (403/404/400, or a generic 5xx). */
+export function deleteGroupErrorMessage(error: unknown): string {
+  if (
+    error instanceof ApiError &&
+    (error.status === 400 || error.status === 403 || error.status === 404)
+  ) {
+    return groupErrorMessage(error);
+  }
+  return userFacingApiError(error, 'Nie udało się usunąć grupy. Spróbuj ponownie.');
 }
 
 /** Polish message for a failed request about a single group (403/404/400 for a bad id). */
