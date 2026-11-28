@@ -16,6 +16,7 @@ import {
   type CreateCourseData,
   type CreateGroupData,
   type FindGroupsFilter,
+  type GroupCatalogRecord,
   type GroupRecord,
   type GroupStudentRecord,
   type ImportGroupStudentsResult,
@@ -206,6 +207,14 @@ class FakeGroupsRepository extends GroupsRepository {
     return this.groups.delete(id);
   }
 
+  async findGroupCatalog(): Promise<GroupCatalogRecord[]> {
+    return [...this.groups.values()].map((group) => {
+      const { id, courseId, courseName, courseCode, name, semester, lecturerLogin } =
+        this.hydrate(group);
+      return { id, courseId, courseName, courseCode, name, semester, lecturerLogin };
+    });
+  }
+
   async findGroupStudents(): Promise<GroupStudentRecord[]> {
     return [];
   }
@@ -275,6 +284,11 @@ const ROUTES: RouteCase[] = [
     route: 'GET /api/groups',
     send: (r) => r.get('/api/groups'),
     expected: { ...STAFF_ONLY, lecturer: 200, admin: 200 },
+  },
+  {
+    route: 'GET /api/groups/catalog',
+    send: (r) => r.get('/api/groups/catalog'),
+    expected: { anonymous: 401, student: 200, lecturer: 200, admin: 200 },
   },
   {
     route: 'POST /api/groups',

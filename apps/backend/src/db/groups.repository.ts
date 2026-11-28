@@ -33,6 +33,16 @@ export interface GroupRecord {
   updatedAt: Date;
 }
 
+export interface GroupCatalogRecord {
+  id: string;
+  courseId: string;
+  courseName: string;
+  courseCode: string | null;
+  name: string;
+  semester: string | null;
+  lecturerLogin: string;
+}
+
 export interface CreateCourseData {
   name: string;
   code: string | null;
@@ -228,6 +238,27 @@ export async function findGroupStudents(
     .orderBy(asc(groupStudents.assignedAt), asc(users.login));
 }
 
+/**
+ * Read-only catalog of all groups ordered by course name and group name.
+ * Intentionally omits group_students to avoid exposing membership or counts.
+ */
+export async function findGroupCatalog(database: AppDatabase = db): Promise<GroupCatalogRecord[]> {
+  return database
+    .select({
+      id: groups.id,
+      courseId: groups.courseId,
+      courseName: courses.name,
+      courseCode: courses.code,
+      name: groups.name,
+      semester: groups.semester,
+      lecturerLogin: users.login,
+    })
+    .from(groups)
+    .innerJoin(courses, eq(groups.courseId, courses.id))
+    .innerJoin(users, eq(groups.lecturerId, users.id))
+    .orderBy(asc(courses.name), asc(groups.name));
+}
+
 export abstract class GroupsRepository {
   abstract findUserById(id: string): Promise<UserSummary | null>;
   abstract findCourses(): Promise<CourseRecord[]>;
@@ -239,6 +270,7 @@ export abstract class GroupsRepository {
   abstract updateGroup(id: string, data: UpdateGroupData): Promise<GroupRecord | null>;
   abstract deleteGroup(id: string): Promise<boolean>;
   abstract findGroupStudents(groupId: string): Promise<GroupStudentRecord[]>;
+  abstract findGroupCatalog(): Promise<GroupCatalogRecord[]>;
   abstract importStudents(
     groupId: string,
     logins: readonly string[],
@@ -319,6 +351,10 @@ export class DrizzleGroupsRepository extends GroupsRepository {
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .groupBy(groups.id, courses.id, users.id)
       .orderBy(asc(courses.name), asc(groups.name));
+  }
+
+  async findGroupCatalog(): Promise<GroupCatalogRecord[]> {
+    return findGroupCatalog();
   }
 
   async findGroupById(id: string): Promise<GroupRecord | null> {

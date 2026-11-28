@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type {
   CourseDto,
+  GroupCatalogItemDto,
   GroupDto,
   GroupStudentDto,
   GroupStudentsImportReport,
@@ -18,6 +19,7 @@ import {
   GroupNotFoundError,
   GroupsRepository,
   type CourseRecord,
+  type GroupCatalogRecord,
   type GroupRecord,
 } from '../db';
 import { CsvParserService, type UploadedCsvFile } from '../users/csv-parser.service';
@@ -56,6 +58,18 @@ function toGroupDto(record: GroupRecord): GroupDto {
   };
 }
 
+function toGroupCatalogItemDto(record: GroupCatalogRecord): GroupCatalogItemDto {
+  return {
+    id: record.id,
+    courseId: record.courseId,
+    courseName: record.courseName,
+    courseCode: record.courseCode,
+    name: record.name,
+    semester: record.semester,
+    lecturerLogin: record.lecturerLogin,
+  };
+}
+
 @Injectable()
 export class GroupsService {
   constructor(
@@ -86,6 +100,11 @@ export class GroupsService {
       }
       throw error;
     }
+  }
+
+  async listGroupCatalog(): Promise<GroupCatalogItemDto[]> {
+    const records = await this.repository.findGroupCatalog();
+    return records.map(toGroupCatalogItemDto);
   }
 
   async listGroups(actor: AuthUserPayload, courseId?: string): Promise<GroupDto[]> {

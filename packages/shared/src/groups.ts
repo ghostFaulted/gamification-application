@@ -74,3 +74,14 @@ export interface GroupStudentDto {
   /** ISO timestamp of adding the student to the group. */
   assignedAt: string;
 }
+
+/** Read-only group overview visible to students (without roster or private data). */
+export interface GroupCatalogItemDto {
+  id: string;
+  courseId: string;
+  courseName: string;
+  courseCode: string | null;
+  name: string;
+  semester: string | null;
+  lecturerLogin: string;
+}

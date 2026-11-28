@@ -98,6 +98,9 @@ class FakeGroupsRepository extends GroupsRepository {
   findGroupStudents(): never {
     throw new Error('Not used in these tests');
   }
+  findGroupCatalog(): never {
+    throw new Error('Not used in these tests');
+  }
 }
 
 describe('POST /api/groups/:id/students/import (e2e)', () => {
