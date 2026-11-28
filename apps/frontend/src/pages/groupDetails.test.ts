@@ -2,7 +2,13 @@
 import type { GroupDto, GroupStudentsImportReport } from '@gamification/shared';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../api/client';
-import { groupMeta, importSummary, studentCountLabel, toGroupLoadError } from './groupDetails';
+import {
+  groupMeta,
+  importSummary,
+  importSummaryType,
+  studentCountLabel,
+  toGroupLoadError,
+} from './groupDetails';
 
 const group: GroupDto = {
   id: '6f1c2b8e-3d4a-4c5b-9e6f-7a8b9c0d1e2f',
@@ -112,6 +118,20 @@ describe('importSummary', () => {
     );
   });
 
+  it('keeps the review-case counters when nobody was added', () => {
+    expect(
+      importSummary({
+        ...empty,
+        alreadyInGroup: 4,
+        notStudentLogins: ['lecturer2'],
+        duplicatesInFile: 1,
+        invalid: 1,
+      }),
+    ).toBe(
+      'Nie dodano nowych studentów. Już w grupie: 4. Pominięte konta pracowników: 1. Duplikaty w pliku: 1. Błędne wiersze: 1.',
+    );
+  });
+
   it('omits duplicates when there are none', () => {
     expect(importSummary({ ...empty, added: 2, duplicatesInFile: 0 })).toBe(
       'Zaimportowano 2 studentów.',
@@ -119,5 +139,16 @@ describe('importSummary', () => {
     expect(importSummary({ ...empty, added: 2, duplicatesInFile: 1 })).toBe(
       'Zaimportowano 2 studentów. Duplikaty w pliku: 1.',
     );
+  });
+});
+
+describe('importSummaryType', () => {
+  it('is red when nobody was added', () => {
+    expect(importSummaryType({ added: 0 })).toBe('error');
+  });
+
+  it('is green when at least one student was added', () => {
+    expect(importSummaryType({ added: 1 })).toBe('success');
+    expect(importSummaryType({ added: 6 })).toBe('success');
   });
 });

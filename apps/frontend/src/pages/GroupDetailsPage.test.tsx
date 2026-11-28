@@ -213,7 +213,9 @@ describe('GroupDetailsPage', () => {
     chooseFile(new File(['login\ns500003\n'], 'grupa.csv', { type: 'text/csv' }));
 
     expect(await screen.findByRole('heading', { name: 'Lista studentów (3)' })).toBeTruthy();
-    expect(screen.getByText('Zaimportowano 1 studenta. Już w grupie: 2.')).toBeTruthy();
+    const successToast = screen.getByText('Zaimportowano 1 studenta. Już w grupie: 2.');
+    expect(successToast.closest('.ui-alert')?.className).toContain('ui-alert--success');
+    expect(successToast.closest('.ui-alert')?.getAttribute('role')).toBe('status');
     const importCall = fetchMock.mock.calls.find(([url]) => url === IMPORT_URL);
     expect(importCall?.[1]?.method).toBe('POST');
     expect(importCall?.[1]?.body).toBeInstanceOf(FormData);
@@ -288,7 +290,66 @@ describe('GroupDetailsPage', () => {
       ),
     );
     expect(screen.getByRole('heading', { name: 'Lista studentów (2)' })).toBeTruthy();
+    expect(screen.getByRole('alert').className).toContain('ui-alert--error');
   });
+
+  it('shows a red summary toast with counters when the import added nobody', async () => {
+    const emptyAdd: GroupStudentsImportReport = {
+      added: 0,
+      addedLogins: [],
+      createdAccounts: 0,
+      createdLogins: [],
+      alreadyInGroup: 4,
+      alreadyInGroupLogins: ['s1', 's2', 's3', 's4'],
+      notStudentLogins: ['lecturer2'],
+      duplicatesInFile: 1,
+      invalid: 1,
+      errors: [{ row: 8, value: 'Jan Kowalski', reason: 'Nieprawidłowy login' }],
+    };
+    const routes = okGroup();
+    routes[`POST ${IMPORT_URL}`] = [() => jsonResponse(200, emptyAdd)];
+    mockApi(routes);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Lista studentów (2)' });
+
+    chooseFile(new File(['login\ns1\n'], 'grupa.csv', { type: 'text/csv' }));
+
+    const toast = await screen.findByRole('alert');
+    expect(toast.textContent).toBe(
+      'Nie dodano nowych studentów. Już w grupie: 4. Pominięte konta pracowników: 1. Duplikaty w pliku: 1. Błędne wiersze: 1.',
+    );
+    expect(toast.className).toContain('ui-alert--error');
+  });
+
+  it('keeps the summary toast green when students were added, even if some rows were skipped', async () => {
+    const withSkips: GroupStudentsImportReport = {
+      ...report,
+      added: 2,
+      addedLogins: ['s500003', 's500004'],
+      notStudentLogins: ['lecturer2'],
+      duplicatesInFile: 1,
+      invalid: 1,
+      errors: [{ row: 8, value: 'Jan Kowalski', reason: 'Nieprawidłowy login' }],
+    };
+    const routes = okGroup();
+    routes[`GET ${STUDENTS_URL}`] = [
+      () => jsonResponse(200, [student(1), student(2)]),
+      () => jsonResponse(200, [student(1), student(2), student(3), student(4)]),
+    ];
+    routes[`POST ${IMPORT_URL}`] = [() => jsonResponse(200, withSkips)];
+    mockApi(routes);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Lista studentów (2)' });
+
+    chooseFile(new File(['login\ns500003\n'], 'grupa.csv', { type: 'text/csv' }));
+
+    const toast = await screen.findByText(
+      'Zaimportowano 2 studentów. Już w grupie: 2. Pominięte konta pracowników: 1. Duplikaty w pliku: 1. Błędne wiersze: 1.',
+    );
+    expect(toast.closest('.ui-alert')?.className).toContain('ui-alert--success');
+    expect(toast.closest('.ui-alert')?.getAttribute('role')).toBe('status');
+  });
+
   it('asks for confirmation before deleting and then returns to the list with a toast', async () => {
     const fetchMock = mockApi({
       ...okGroup(),
