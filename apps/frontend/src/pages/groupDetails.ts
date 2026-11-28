@@ -32,6 +32,13 @@ export function studentCountLabel(count: number): string {
   return `${count} ${count === 1 ? 'student' : 'studentów'}`;
 }
 
+/** Green when at least one student was added; red when the import added nobody. */
+export function importSummaryType(
+  report: Pick<GroupStudentsImportReport, 'added'>,
+): 'success' | 'error' {
+  return report.added > 0 ? 'success' : 'error';
+}
+
 /**
  * Toast text after a group import, e.g. "Zaimportowano 6 studentów." plus what was skipped:
  * students already in the group, staff accounts (lecturers and admins), logins repeated in the file and rejected rows.

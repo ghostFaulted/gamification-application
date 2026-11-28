@@ -8,7 +8,13 @@ import { GroupStudentsTable } from '../components/GroupStudentsTable';
 import { Alert, Button, ButtonLink } from '../components/ui';
 import { AlertCircleIcon, SpinnerIcon } from '../components/ui/icons';
 import { GROUPS_LIST_PATH } from '../routes/roles';
-import { groupMeta, importSummary, toGroupLoadError, type GroupLoadError } from './groupDetails';
+import {
+  groupMeta,
+  importSummary,
+  importSummaryType,
+  toGroupLoadError,
+  type GroupLoadError,
+} from './groupDetails';
 import './GroupDetailsPage.css';
 
 type LoadState =
@@ -18,6 +24,8 @@ type LoadState =
 
 type ImportState =
   { status: 'idle' } | { status: 'uploading' } | { status: 'error'; message: string };
+
+type ImportToast = { message: string; type: 'success' | 'error' };
 
 /** How long the "Zaimportowano…" toast stays on screen. */
 const TOAST_MS = 6000;
@@ -30,7 +38,7 @@ export function GroupDetailsPage({ groupId }: { groupId: string }) {
   // Bumped to load the group again: "Spróbuj ponownie" (with the spinner).
   const [attempt, setAttempt] = useState(0);
   const [importState, setImportState] = useState<ImportState>({ status: 'idle' });
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<ImportToast | null>(null);
   // Set when an import succeeded but reloading the student list failed; the current list stays.
   const [refreshError, setRefreshError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -109,7 +117,7 @@ export function GroupDetailsPage({ groupId }: { groupId: string }) {
     try {
       const report = await importGroupStudents(groupId, file);
       setImportState({ status: 'idle' });
-      setToast(importSummary(report));
+      setToast({ message: importSummary(report), type: importSummaryType(report) });
       await refreshStudents();
     } catch (error) {
       setImportState({
@@ -137,8 +145,8 @@ export function GroupDetailsPage({ groupId }: { groupId: string }) {
       </nav>
 
       {toast && (
-        <Alert type="success" className="group-view__toast">
-          {toast}
+        <Alert type={toast.type} className="group-view__toast">
+          {toast.message}
         </Alert>
       )}
 
