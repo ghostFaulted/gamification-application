@@ -16,7 +16,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { GroupDto, GroupStudentDto, GroupStudentsImportReport } from '@gamification/shared';
+import type {
+  GroupCatalogItemDto,
+  GroupDto,
+  GroupStudentDto,
+  GroupStudentsImportReport,
+} from '@gamification/shared';
 import { Auth } from '../auth/auth.decorator';
 import type { AuthenticatedRequest } from '../auth/jwt-auth.guard';
 import { MAX_CSV_SIZE_BYTES, type UploadedCsvFile } from '../users/csv-parser.service';
@@ -44,6 +49,13 @@ export class GroupsController {
   ): Promise<GroupDto[]> {
     const courseId = rawCourseId === undefined ? undefined : parseUuid(rawCourseId, 'courseId');
     return this.groupsService.listGroups(requireUser(req), courseId);
+  }
+
+  // Must stay above @Get(':id') so "catalog" is not matched as a group UUID.
+  @Get('catalog')
+  @Auth('student', 'lecturer', 'admin')
+  listGroupCatalog(): Promise<GroupCatalogItemDto[]> {
+    return this.groupsService.listGroupCatalog();
   }
 
   @Get(':id')

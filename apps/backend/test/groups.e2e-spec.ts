@@ -16,6 +16,7 @@ import {
   type CreateCourseData,
   type CreateGroupData,
   type FindGroupsFilter,
+  type GroupCatalogRecord,
   type GroupRecord,
   type GroupStudentRecord,
   type ImportGroupStudentsResult,
@@ -118,6 +119,20 @@ class InMemoryGroupsRepository extends GroupsRepository {
     };
     this.courses.set(record.id, record);
     return record;
+  }
+
+  async findGroupCatalog(): Promise<GroupCatalogRecord[]> {
+    return this.findGroups().then((items) =>
+      items.map(({ id, courseId, courseName, courseCode, name, semester, lecturerLogin }) => ({
+        id,
+        courseId,
+        courseName,
+        courseCode,
+        name,
+        semester,
+        lecturerLogin,
+      })),
+    );
   }
 
   async findGroups(filter: FindGroupsFilter = {}): Promise<GroupRecord[]> {
@@ -571,6 +586,106 @@ describe('Courses and Groups CRUD (e2e)', () => {
         .get(`/api/groups/${groupId}/students`)
         .set('Cookie', cookieFor(STUDENT_1))
         .expect(403);
+    });
+  });
+
+  describe('GET /api/groups/catalog', () => {
+    it('returns 401 without a session', async () => {
+      await request(app.getHttpServer()).get('/api/groups/catalog').expect(401);
+    });
+
+    it('returns an empty list when no groups exist', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/groups/catalog')
+        .set('Cookie', cookieFor(STUDENT_1))
+        .expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+
+    it('lists all groups across lecturers for a student without roster or private fields', async () => {
+      const algRes = await request(app.getHttpServer())
+        .post('/api/courses')
+        .set('Cookie', cookieFor(ADMIN_1))
+        .send({ name: 'Algorytmy', code: 'ALG' })
+        .expect(201);
+      const ioRes = await request(app.getHttpServer())
+        .post('/api/courses')
+        .set('Cookie', cookieFor(LECTURER_1))
+        .send({ name: 'Inżynieria oprogramowania', code: null })
+        .expect(201);
+
+      const gIoRes = await request(app.getHttpServer())
+        .post('/api/groups')
+        .set('Cookie', cookieFor(LECTURER_1))
+        .send({ courseId: ioRes.body.id, name: 'Grupa B', semester: '2026/27-Z' })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(`/api/groups/${gIoRes.body.id}/students/import`)
+        .set('Cookie', cookieFor(LECTURER_1))
+        .attach('file', Buffer.from('login\ns500101\ns500102\n'), 'students.csv')
+        .expect(200);
+
+      const resBeforeNew = await request(app.getHttpServer())
+        .get('/api/groups/catalog')
+        .set('Cookie', cookieFor(STUDENT_1))
+        .expect(200);
+
+      expect(resBeforeNew.body).toEqual([
+        {
+          id: gIoRes.body.id,
+          courseId: ioRes.body.id,
+          courseName: 'Inżynieria oprogramowania',
+          courseCode: null,
+          name: 'Grupa B',
+          semester: '2026/27-Z',
+          lecturerLogin: 'lecturer1',
+        },
+      ]);
+
+      // Newly created group by another lecturer appears immediately.
+      const gAlgRes = await request(app.getHttpServer())
+        .post('/api/groups')
+        .set('Cookie', cookieFor(ADMIN_1))
+        .send({
+          courseId: algRes.body.id,
+          name: 'Grupa A',
+          semester: null,
+          lecturerId: LECTURER_2.id,
+        })
+        .expect(201);
+
+      const resAfterNew = await request(app.getHttpServer())
+        .get('/api/groups/catalog')
+        .set('Cookie', cookieFor(STUDENT_1))
+        .expect(200);
+
+      expect(resAfterNew.body).toEqual([
+        {
+          id: gAlgRes.body.id,
+          courseId: algRes.body.id,
+          courseName: 'Algorytmy',
+          courseCode: 'ALG',
+          name: 'Grupa A',
+          semester: null,
+          lecturerLogin: 'lecturer2',
+        },
+        {
+          id: gIoRes.body.id,
+          courseId: ioRes.body.id,
+          courseName: 'Inżynieria oprogramowania',
+          courseCode: null,
+          name: 'Grupa B',
+          semester: '2026/27-Z',
+          lecturerLogin: 'lecturer1',
+        },
+      ]);
+
+      const serialized = JSON.stringify(resAfterNew.body);
+      expect(serialized).not.toContain('s500101');
+      expect(serialized).not.toContain('studentCount');
+      expect(serialized).not.toContain('lecturerId');
     });
   });
 
